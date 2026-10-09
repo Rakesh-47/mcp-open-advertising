@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MsAdsService } from "../../src/services/msads/msads-service.js";
-import { MSADS_ALL_CAMPAIGN_TYPES } from "../../src/mcp-server/tools/utils/entity-mapping.js";
+import {
+  MSADS_ALL_AD_TYPES,
+  MSADS_ALL_CAMPAIGN_TYPES,
+} from "../../src/mcp-server/tools/utils/entity-mapping.js";
 import type { MsAdsHttpClient } from "../../src/services/msads/msads-http-client.js";
 import type { RateLimiter } from "@cesteral/shared";
 import pino from "pino";
@@ -95,6 +98,29 @@ describe("MsAdsService", () => {
       expect(httpClient.post).toHaveBeenCalledWith(
         "/Keywords/QueryByAdGroupId",
         { AdGroupId: 789 },
+        undefined
+      );
+    });
+
+    it("lists ads by parent ad group ID with every AdType", async () => {
+      // basis: getadsbyadgroupid.md — AdTypes is required; without it the
+      // service returns 2805 CampaignServiceAdTypeInvalid "AdTypes are required".
+      await service.listEntities("ad", { parentId: "789" });
+      expect(httpClient.post).toHaveBeenCalledWith(
+        "/Ads/QueryByAdGroupId",
+        { AdGroupId: 789, AdTypes: MSADS_ALL_AD_TYPES },
+        undefined
+      );
+    });
+
+    it("lets a caller's AdTypes filter replace the default", async () => {
+      await service.listEntities("ad", {
+        parentId: "789",
+        filters: { AdTypes: ["ResponsiveSearch"] },
+      });
+      expect(httpClient.post).toHaveBeenCalledWith(
+        "/Ads/QueryByAdGroupId",
+        { AdGroupId: 789, AdTypes: ["ResponsiveSearch"] },
         undefined
       );
     });

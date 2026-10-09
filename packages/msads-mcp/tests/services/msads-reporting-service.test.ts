@@ -201,6 +201,18 @@ describe("MsAdsReportingService", () => {
       expect(httpClient.post).toHaveBeenCalledTimes(3);
     });
 
+    it("stops at Success without a download URL (empty report)", async () => {
+      // basis: Reporting v13 pollgeneratereport.md — a report with no data
+      // completes with Status=Success and no ReportDownloadUrl.
+      (httpClient.post as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ReportRequestStatus: { Status: "Success", ReportDownloadUrl: null },
+      });
+
+      const url = await service.pollReport("req-empty");
+      expect(url).toBeUndefined();
+      expect(httpClient.post).toHaveBeenCalledTimes(1);
+    });
+
     it("throws on Error status", async () => {
       (httpClient.post as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ReportRequestStatus: { Status: "Error" },
@@ -344,6 +356,21 @@ describe("MsAdsReportingService", () => {
       expect(result.reportRequestId).toBe("req-full");
       expect(result.headers).toEqual(["Col1", "Col2"]);
       expect(result.rows).toHaveLength(1);
+    });
+
+    it("returns zero rows without downloading when the report is empty", async () => {
+      (httpClient.post as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ ReportRequestId: "req-empty" })
+        .mockResolvedValueOnce({ ReportRequestStatus: { Status: "Success" } });
+
+      const result = await service.getReport(sampleConfig);
+      expect(result).toEqual({
+        headers: sampleConfig.columns,
+        rows: [],
+        totalRows: 0,
+        reportRequestId: "req-empty",
+      });
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 });
