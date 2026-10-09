@@ -37,7 +37,7 @@ interface GetUserResponse {
 
 /**
  * Simple access token adapter — holds a pre-generated Microsoft Ads OAuth2 token
- * plus developer token and account identifiers.
+ * (or a function returning a current one) plus developer token and account identifiers.
  * Validates via the Customer Management user query JSON endpoint.
  */
 export class MsAdsAccessTokenAdapter implements MsAdsAuthAdapter {
@@ -45,7 +45,7 @@ export class MsAdsAccessTokenAdapter implements MsAdsAuthAdapter {
   private _userId = "";
 
   constructor(
-    private readonly accessToken: string,
+    private readonly accessToken: string | (() => Promise<string>),
     public readonly developerToken: string,
     public readonly customerId: string,
     public readonly accountId: string,
@@ -57,12 +57,13 @@ export class MsAdsAccessTokenAdapter implements MsAdsAuthAdapter {
   }
 
   async getAccessToken(): Promise<string> {
-    return this.accessToken;
+    return typeof this.accessToken === "function" ? this.accessToken() : this.accessToken;
   }
 
   async validate(): Promise<void> {
     if (this.validated) return;
 
+    const accessToken = await this.getAccessToken();
     const response = await fetchWithTimeout(
       `${this.customerApiBaseUrl}/User/Query`,
       10_000,
@@ -70,7 +71,7 @@ export class MsAdsAccessTokenAdapter implements MsAdsAuthAdapter {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${this.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           DeveloperToken: this.developerToken,
           "Content-Type": "application/json",
         },

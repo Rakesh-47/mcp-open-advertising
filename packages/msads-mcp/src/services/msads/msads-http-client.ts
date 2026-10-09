@@ -7,6 +7,7 @@ import {
   executeWithRetry,
   JsonRpcErrorCode,
   mapHttpStatusToJsonRpc,
+  McpError,
 } from "@cesteral/shared";
 import type { RequestContext, RetryConfig } from "@cesteral/shared";
 import { withMsAdsApiSpan } from "../../utils/platform.js";
@@ -180,6 +181,14 @@ export class MsAdsHttpClient {
     context?: RequestContext,
     options?: RequestInit
   ): Promise<unknown> {
+    // msads-refresh opens sessions without an account only to list tools.
+    if (!this.authAdapter.accountId) {
+      throw new McpError(
+        JsonRpcErrorCode.InvalidRequest,
+        "No Microsoft Ads account selected for this session. Send X-MSAds-Customer-Id and X-MSAds-Account-Id headers."
+      );
+    }
+
     return withMsAdsApiSpan(`api.${method}`, undefined, async (span) => {
       span.setAttribute("http.request.method", method);
       span.setAttribute("http.url", url);

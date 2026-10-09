@@ -11,3 +11,9 @@ export {
   getMsAdsCredentialFingerprint,
 } from "./msads-auth-adapter.js";
 export { MsAdsBearerAuthStrategy } from "./msads-auth-strategy.js";
+export {
+  MSADS_PRODUCTION_SCOPE,
+  MsAdsRefreshTokenProvider,
+  MsAdsRefreshAuthStrategy,
+  type MsAdsRefreshConfig,
+} from "./msads-refresh.js";
