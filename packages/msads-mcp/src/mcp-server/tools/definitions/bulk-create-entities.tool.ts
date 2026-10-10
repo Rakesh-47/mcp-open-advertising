@@ -4,6 +4,7 @@
 import { z } from "zod";
 import { McpError, JsonRpcErrorCode } from "@cesteral/shared";
 import { resolveSessionServices } from "../utils/resolve-session.js";
+import { BULK_CREATE_ITEMS_GUIDE } from "../utils/field-guides.js";
 import {
   assertMsAdsChunkedBulkCapacity,
   chunkedBulkCapacityDryRunError,
@@ -44,7 +45,7 @@ const EFFECT_KIND = "entities_created";
 export const BulkCreateEntitiesInputSchema = z
   .object({
     entityType: z.enum(getEntityTypeEnum()).describe("Type of entities to create"),
-    items: z.array(z.record(z.unknown())).min(1).describe("Array of entity data objects to create"),
+    items: z.array(z.record(z.unknown())).min(1).describe(BULK_CREATE_ITEMS_GUIDE),
     ...parentIdInputFields,
     dry_run: z
       .boolean()

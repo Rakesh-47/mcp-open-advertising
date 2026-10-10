@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
+import { LIST_FILTERS_GUIDE } from "../utils/field-guides.js";
 import { getEntityTypeEnum, type MsAdsEntityType } from "../utils/entity-mapping.js";
 import type { RequestContext, McpTextContent, SdkContext } from "@cesteral/shared";
 
@@ -24,7 +25,7 @@ export const ListEntitiesInputSchema = z
       .string()
       .optional()
       .describe("Parent entity ID (e.g., CampaignId for adGroups, AdGroupId for ads/keywords)"),
-    filters: z.record(z.unknown()).optional().describe("Additional filters to pass to the API"),
+    filters: z.record(z.unknown()).optional().describe(LIST_FILTERS_GUIDE),
   })
   .superRefine((data, ctx) => {
     if (data.entityType === "campaign" && !data.accountId) {
