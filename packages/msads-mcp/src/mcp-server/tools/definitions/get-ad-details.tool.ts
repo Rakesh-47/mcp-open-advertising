@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
+import { MSADS_ALL_AD_TYPES } from "../utils/entity-mapping.js";
 import type { RequestContext, McpTextContent, SdkContext } from "@cesteral/shared";
 
 const TOOL_NAME = "msads_get_ad_details";
@@ -39,7 +40,7 @@ export async function getAdDetailsLogic(
     {
       AdIds: input.adIds.map(Number),
       AdGroupId: Number(input.adGroupId),
-      AdTypes: null,
+      AdTypes: MSADS_ALL_AD_TYPES,
     },
     context
   )) as Record<string, unknown>;

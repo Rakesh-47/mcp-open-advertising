@@ -106,13 +106,15 @@ export interface MsAdsBiddingScheme {
 
 // ─── Ad sub-types ─────────────────────────────────────────────────────────────
 
+/** AssetLink: the text sits in a TextAsset, not at the top level. */
 export interface MsAdsAdDescription {
-  Text: string;
+  Asset: { Type: "TextAsset"; Text: string };
   PinnedField?: string;
 }
 
+/** AssetLink: the text sits in a TextAsset, not at the top level. */
 export interface MsAdsAdHeadline {
-  Text: string;
+  Asset: { Type: "TextAsset"; Text: string };
   PinnedField?: string;
 }
 

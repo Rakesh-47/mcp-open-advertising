@@ -99,17 +99,17 @@ msads_create_entity({
 msads_create_entity({
   "entityType": "ad",
   "data": {
+    "AdGroupId": {adGroupId},
     "Ads": [{
-      "AdGroupId": {adGroupId},
-      "Type": "ResponsiveSearchAd",
+      "Type": "ResponsiveSearch",
       "Headlines": [
-        { "Text": "Buy Shoes Online" },
-        { "Text": "Free Shipping Today" },
-        { "Text": "Great Deals on Shoes" }
+        { "Asset": { "Type": "TextAsset", "Text": "Buy Shoes Online" } },
+        { "Asset": { "Type": "TextAsset", "Text": "Free Shipping Today" } },
+        { "Asset": { "Type": "TextAsset", "Text": "Great Deals on Shoes" } }
       ],
       "Descriptions": [
-        { "Text": "Wide selection of shoes at great prices. Shop now!" },
-        { "Text": "Free returns on all orders. Order today!" }
+        { "Asset": { "Type": "TextAsset", "Text": "Wide selection of shoes at great prices. Shop now!" } },
+        { "Asset": { "Type": "TextAsset", "Text": "Free returns on all orders. Order today!" } }
       ],
       "FinalUrls": ["https://example.com/shoes"],
       "Path1": "shoes",

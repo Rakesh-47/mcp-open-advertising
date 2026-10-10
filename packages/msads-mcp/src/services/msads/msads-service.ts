@@ -205,6 +205,7 @@ export class MsAdsService {
     if (params.parentId && config.getByParentOperation && config.parentIdField) {
       const body: Record<string, unknown> = {
         [config.parentIdField]: Number(params.parentId),
+        ...config.defaultReadFields,
         ...params.filters,
       };
       this.logger.debug({ entityType, parentId: params.parentId }, "Listing entities by parent");

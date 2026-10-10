@@ -67,7 +67,8 @@ export interface MsAdsEntityConfig {
   /**
    * Extra request-body fields sent on every read of this entity type unless
    * the caller supplies them. Used for `CampaignType` on campaign reads, which
-   * otherwise default to Search campaigns only.
+   * otherwise default to Search campaigns only, and for the `AdTypes` that ad
+   * reads require.
    */
   defaultReadFields?: Record<string, unknown>;
 }
@@ -91,6 +92,22 @@ export type MsAdsWriteParentIdField = "AccountId" | "CampaignId" | "AdGroupId";
  */
 export const MSADS_ALL_CAMPAIGN_TYPES =
   "Search, Shopping, DynamicSearchAds, Audience, Hotel, PerformanceMax, App";
+
+/**
+ * Every v13 AdType. GetAdsByAdGroupId and GetAdsByIds require `AdTypes`; without
+ * it the service answers 2805 CampaignServiceAdTypeInvalid "AdTypes are required".
+ */
+export const MSADS_ALL_AD_TYPES = [
+  "AppInstall",
+  "DynamicSearch",
+  "ExpandedText",
+  "Hotel",
+  "Image",
+  "Product",
+  "ResponsiveAd",
+  "ResponsiveSearch",
+  "Text",
+];
 
 const ENTITY_CONFIGS: Record<MsAdsEntityType, MsAdsEntityConfig> = {
   campaign: {
@@ -141,6 +158,7 @@ const ENTITY_CONFIGS: Record<MsAdsEntityType, MsAdsEntityConfig> = {
     requiredGetByIdsFields: ["AdGroupId"],
     writeParentIdField: "AdGroupId",
     deleteParentIdFields: ["AdGroupId"],
+    defaultReadFields: { AdTypes: MSADS_ALL_AD_TYPES },
   },
   keyword: {
     addOperation: "/Keywords",

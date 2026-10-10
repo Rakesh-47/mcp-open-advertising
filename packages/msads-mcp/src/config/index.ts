@@ -18,7 +18,7 @@ const ConfigSchema = BaseConfigSchema.extend({
   otelServiceName: z.string().default("msads-mcp"),
 
   // Auth — Microsoft Ads-specific modes
-  mcpAuthMode: z.enum(["msads-bearer", "jwt", "none"]).default("msads-bearer"),
+  mcpAuthMode: z.enum(["msads-bearer", "msads-refresh", "jwt", "none"]).default("msads-bearer"),
 
   // Microsoft Ads API Configuration
   msadsCampaignApiBaseUrl: z
@@ -43,6 +43,13 @@ const ConfigSchema = BaseConfigSchema.extend({
   msadsDeveloperToken: z.string().optional(),
   msadsCustomerId: z.string().optional(),
   msadsAccountId: z.string().optional(),
+
+  // Server-held Microsoft login (MCP_AUTH_MODE=msads-refresh)
+  msadsClientId: z.string().optional(),
+  msadsClientSecret: z.string().optional(),
+  msadsRefreshToken: z.string().optional(),
+  msadsRefreshTokenFile: z.string().optional(),
+  msadsOauthScope: z.string().optional(),
 
   // Reporting poll configuration
   msadsReportPollIntervalMs: z.number().default(3_000),
@@ -74,6 +81,13 @@ export function parseConfig(): AppConfig {
     msadsDeveloperToken: process.env.MSADS_DEVELOPER_TOKEN,
     msadsCustomerId: process.env.MSADS_CUSTOMER_ID,
     msadsAccountId: process.env.MSADS_ACCOUNT_ID,
+
+    // Server-held Microsoft login
+    msadsClientId: process.env.MSADS_CLIENT_ID,
+    msadsClientSecret: process.env.MSADS_CLIENT_SECRET,
+    msadsRefreshToken: process.env.MSADS_REFRESH_TOKEN,
+    msadsRefreshTokenFile: process.env.MSADS_REFRESH_TOKEN_FILE,
+    msadsOauthScope: process.env.MSADS_OAUTH_SCOPE,
 
     // Reporting poll configuration
     msadsReportPollIntervalMs: process.env.MSADS_REPORT_POLL_INTERVAL_MS

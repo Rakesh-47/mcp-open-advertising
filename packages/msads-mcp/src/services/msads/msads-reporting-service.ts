@@ -81,22 +81,24 @@ export class MsAdsReportingService {
   }
 
   /**
-   * Poll for report completion. Returns download URL when ready.
+   * Poll for report completion. Returns the download URL when ready, or undefined
+   * when the report succeeded with no data: PollGenerateReport then returns
+   * Status=Success with no ReportDownloadUrl (Reporting v13 `pollgeneratereport.md`).
    */
-  async pollReport(reportRequestId: string, context?: RequestContext): Promise<string> {
+  async pollReport(reportRequestId: string, context?: RequestContext): Promise<string | undefined> {
     this.logger.debug({ reportRequestId }, "Starting report poll");
 
     try {
       const status = await pollUntilComplete<{ status: string; downloadUrl?: string }>({
         fetchStatus: async () => this.checkReportStatus(reportRequestId, context),
-        isComplete: (s) => s.status === "Success" && !!s.downloadUrl,
+        isComplete: (s) => s.status === "Success",
         isFailed: (s) => s.status === "Error",
         initialDelayMs: this.pollIntervalMs,
         maxDelayMs: POLL_MAX_MS,
         maxAttempts: this.maxPollAttempts,
       });
-      this.logger.info({ reportRequestId }, "Report ready");
-      return status.downloadUrl!;
+      this.logger.info({ reportRequestId, empty: !status.downloadUrl }, "Report ready");
+      return status.downloadUrl || undefined;
     } catch (err) {
       if (err instanceof ReportFailedError) {
         throw new McpError(
@@ -175,6 +177,9 @@ export class MsAdsReportingService {
   ): Promise<{ headers: string[]; rows: string[][]; totalRows: number; reportRequestId: string }> {
     const reportRequestId = await this.submitReport(config, context);
     const downloadUrl = await this.pollReport(reportRequestId, context);
+    if (!downloadUrl) {
+      return { headers: config.columns, rows: [], totalRows: 0, reportRequestId };
+    }
     const data = await this.downloadReport(downloadUrl, maxRows, context);
     return { ...data, reportRequestId };
   }

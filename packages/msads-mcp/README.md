@@ -127,8 +127,18 @@ pnpm run test
 ### Server Configuration
 
 - `MSADS_MCP_PORT`: Server port (default: 3013)
-- `MCP_AUTH_MODE`: Authentication mode - `msads-bearer` (default), `jwt`, or `none`
+- `MCP_AUTH_MODE`: Authentication mode - `msads-bearer` (default), `msads-refresh`, `jwt`, or `none`
 - `MCP_AUTH_SECRET_KEY`: Required when `MCP_AUTH_MODE=jwt`
+
+### Server-Held Login Mode (`msads-refresh`)
+
+The server holds one Microsoft login (typically a manager account with client accounts linked to it) and refreshes its access token itself through `login.microsoftonline.com/common`. Microsoft returns a new refresh token on every refresh; the latest one is saved to `MSADS_REFRESH_TOKEN_FILE` so it survives restarts. Callers pick the account per session with the `X-MSAds-Customer-Id` and `X-MSAds-Account-Id` headers; no token is sent. A session opened without them can list tools but its API calls are refused. Anyone who can reach the server can use every linked account, so keep it on a private network.
+
+- `MSADS_CLIENT_ID`, `MSADS_CLIENT_SECRET`: Azure app registration (secret empty for a public client)
+- `MSADS_REFRESH_TOKEN`: Refresh token from a one-time consent with `offline_access`. Setting a new one (after re-consent) replaces the saved token
+- `MSADS_REFRESH_TOKEN_FILE`: Optional, but without it a restart falls back to `MSADS_REFRESH_TOKEN`, which eventually expires
+- `MSADS_OAUTH_SCOPE`: Defaults to `https://ads.microsoft.com/msads.manage offline_access`; sandbox uses `https://si.ads.microsoft.com/msads.manage offline_access`
+- `MSADS_DEVELOPER_TOKEN`: Microsoft Advertising developer token (sandbox: `BBD37VB98`)
 
 ### Stdio Mode Credentials
 

@@ -61,19 +61,23 @@ account comes from the \`CustomerAccountId\` header).
 \`\`\`
 
 ## Responsive Search Ad
+Headlines and Descriptions are AssetLink objects: each text sits in an
+\`Asset\` of \`"Type": "TextAsset"\`. A bare \`{ "Text": ... }\` is rejected
+(6206 / 6207 "Headline/Description is not valid"). At least 3 headlines and 2
+descriptions are required.
 \`\`\`json
 {
   "AdGroupId": 987654321,
   "Ads": [{
     "Type": "ResponsiveSearch",
     "Headlines": [
-      { "Text": "Buy Shoes Online", "PinnedField": "Headline1" },
-      { "Text": "Free Shipping Available" },
-      { "Text": "Summer Sale - 30% Off" }
+      { "Asset": { "Type": "TextAsset", "Text": "Buy Shoes Online" }, "PinnedField": "Headline1" },
+      { "Asset": { "Type": "TextAsset", "Text": "Free Shipping Available" } },
+      { "Asset": { "Type": "TextAsset", "Text": "Summer Sale - 30% Off" } }
     ],
     "Descriptions": [
-      { "Text": "Shop our wide selection of shoes. Free returns on all orders." },
-      { "Text": "Top brands at great prices. Order today!" }
+      { "Asset": { "Type": "TextAsset", "Text": "Shop our wide selection of shoes. Free returns on all orders." } },
+      { "Asset": { "Type": "TextAsset", "Text": "Top brands at great prices. Order today!" } }
     ],
     "FinalUrls": ["https://example.com/shoes"],
     "Path1": "shoes",

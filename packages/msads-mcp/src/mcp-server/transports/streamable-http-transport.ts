@@ -19,6 +19,7 @@ import {
   createTransportEntrypoints,
 } from "@cesteral/shared";
 import { MsAdsBearerAuthStrategy } from "../../auth/msads-auth-strategy.js";
+import { MsAdsRefreshAuthStrategy } from "../../auth/msads-refresh.js";
 import type { MsAdsAuthAdapter } from "../../auth/msads-auth-adapter.js";
 import { createSessionServices, sessionServiceStore } from "../../services/session-services.js";
 import { rateLimiter } from "../../utils/platform.js";
@@ -29,10 +30,21 @@ function buildPlatformConfig(config: AppConfig, logger: Logger): TransportFactor
     authStrategy:
       config.mcpAuthMode === "msads-bearer"
         ? new MsAdsBearerAuthStrategy(config.msadsCustomerApiBaseUrl)
-        : createAuthStrategy(config.mcpAuthMode as AuthMode, {
-            jwtSecret: config.mcpAuthSecretKey,
-            logger,
-          }),
+        : config.mcpAuthMode === "msads-refresh"
+          ? new MsAdsRefreshAuthStrategy({
+              clientId: config.msadsClientId,
+              clientSecret: config.msadsClientSecret,
+              refreshToken: config.msadsRefreshToken,
+              refreshTokenFile: config.msadsRefreshTokenFile,
+              scope: config.msadsOauthScope,
+              developerToken: config.msadsDeveloperToken,
+              customerApiBaseUrl: config.msadsCustomerApiBaseUrl,
+              logger,
+            })
+          : createAuthStrategy(config.mcpAuthMode as AuthMode, {
+              jwtSecret: config.mcpAuthSecretKey,
+              logger,
+            }),
     corsAllowHeaders: [
       "Content-Type",
       "Authorization",
@@ -46,7 +58,9 @@ function buildPlatformConfig(config: AppConfig, logger: Logger): TransportFactor
     authErrorHint:
       config.mcpAuthMode === "msads-bearer"
         ? "Provide an OAuth2 access token via Authorization: Bearer <token> header, plus X-MSAds-Developer-Token, X-MSAds-Customer-Id, and X-MSAds-Account-Id headers."
-        : "Provide a valid Bearer token in the Authorization header.",
+        : config.mcpAuthMode === "msads-refresh"
+          ? "Provide X-MSAds-Customer-Id and X-MSAds-Account-Id headers. The server must have MSADS_CLIENT_ID, MSADS_REFRESH_TOKEN and MSADS_DEVELOPER_TOKEN set."
+          : "Provide a valid Bearer token in the Authorization header.",
     sessionServiceStore,
     rateLimiter,
     // #201: the server card publishes the retry policy a caller will actually

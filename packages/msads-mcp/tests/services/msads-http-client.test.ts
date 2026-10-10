@@ -67,6 +67,19 @@ describe("MsAdsHttpClient", () => {
     expect(headers.CustomerAccountId).toBe("acct-456");
   });
 
+  it("refuses API calls when the session has no account selected", async () => {
+    client = new MsAdsHttpClient(
+      { ...createMockAdapter(), customerId: "", accountId: "" },
+      "https://campaign.api.bingads.microsoft.com/CampaignManagement/v13",
+      mockLogger
+    );
+
+    await expect(client.post("/Campaigns", { Campaigns: [] })).rejects.toThrow(
+      "No Microsoft Ads account selected"
+    );
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   it("sends GET requests with query params", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
