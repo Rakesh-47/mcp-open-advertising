@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
+import { AD_EXTENSIONS_DATA_GUIDE } from "../utils/field-guides.js";
 import type { MsAdsBatchWriteSpec } from "../../../services/msads/msads-service.js";
 import {
   McpError,
@@ -35,7 +36,7 @@ export const ManageAdExtensionsInputSchema = z
     operation: z
       .enum(["setAssociations", "deleteAssociations", "getAssociations"])
       .describe("Operation to perform"),
-    data: z.record(z.unknown()).describe("Operation data (varies by operation)"),
+    data: z.record(z.unknown()).describe(AD_EXTENSIONS_DATA_GUIDE),
     dry_run: z
       .boolean()
       .optional()

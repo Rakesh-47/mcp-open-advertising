@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
+import { UPDATE_DATA_GUIDE } from "../utils/field-guides.js";
 import {
   entityContextReadParams,
   getEntityConfig,
@@ -82,9 +83,7 @@ export const UpdateEntityInputSchema = z
       .min(1)
       .optional()
       .describe("AdExtensionType, needed to read the ad extension. Required for adExtension"),
-    data: z
-      .record(z.unknown())
-      .describe("Partial fields to update (do not include Id — it is injected)"),
+    data: z.record(z.unknown()).describe(UPDATE_DATA_GUIDE),
     dry_run: z
       .boolean()
       .optional()

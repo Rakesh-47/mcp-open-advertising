@@ -13,6 +13,7 @@ import {
   resolveMsAdsCreateCapability,
   symbolicValidate,
 } from "../utils/dry-run.js";
+import { CREATE_DATA_GUIDE } from "../utils/field-guides.js";
 import { McpError, JsonRpcErrorCode } from "@cesteral/shared";
 import { resolveMsAdsCurrency, snapshotFromMsAdsEntity } from "../utils/capture-snapshot.js";
 import {
@@ -36,7 +37,7 @@ const TOOL_DESCRIPTION = `Create a new Microsoft Advertising entity.
 
 The data object should follow Microsoft Ads API v13 format. Wrap entities in their plural key (e.g., { "Campaigns": [{ "Name": "..." }] }).
 
-Use the entity-schema and entity-examples MCP resources to discover required fields.`;
+The \`data\` field lists the request shape and required fields per entity type; the entity-schema and entity-examples MCP resources have more detail.`;
 
 /**
  * Pull the single entity item out of its plural collection key
@@ -69,7 +70,7 @@ function extractCreatedId(result: Record<string, unknown>): string {
 export const CreateEntityInputSchema = z
   .object({
     entityType: z.enum(getEntityTypeEnum()).describe("Type of entity to create"),
-    data: z.record(z.unknown()).describe("Entity data payload following Microsoft Ads API format"),
+    data: z.record(z.unknown()).describe(CREATE_DATA_GUIDE),
     dry_run: z
       .boolean()
       .optional()

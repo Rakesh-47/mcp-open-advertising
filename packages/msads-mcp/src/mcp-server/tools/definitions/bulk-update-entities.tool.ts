@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
+import { BULK_UPDATE_ITEMS_GUIDE } from "../utils/field-guides.js";
 import {
   assertMsAdsChunkedBulkCapacity,
   chunkedBulkCapacityDryRunError,
@@ -47,10 +48,7 @@ const EFFECT_KIND = "entities_updated";
 export const BulkUpdateEntitiesInputSchema = z
   .object({
     entityType: z.enum(getEntityTypeEnum()).describe("Type of entities to update"),
-    items: z
-      .array(z.record(z.unknown()))
-      .min(1)
-      .describe("Array of entity data objects with Id and fields to update"),
+    items: z.array(z.record(z.unknown())).min(1).describe(BULK_UPDATE_ITEMS_GUIDE),
     ...parentIdInputFields,
     dry_run: z
       .boolean()
