@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
+import { REPORT_TYPE_GUIDE, REPORT_COLUMNS_GUIDE } from "../utils/field-guides.js";
 import {
   arrayRowsToRecords,
   createReportView,
@@ -26,12 +27,9 @@ This is a blocking operation — it will wait for the report to complete before 
 
 export const GetReportInputSchema = z
   .object({
-    reportType: z.string().describe("Report type (e.g., CampaignPerformanceReportRequest)"),
+    reportType: z.string().describe(REPORT_TYPE_GUIDE),
     accountId: z.string().describe("Microsoft Ads Account ID"),
-    columns: z
-      .array(z.string())
-      .min(1)
-      .describe("Report columns to include (e.g., CampaignName, Impressions, Clicks)"),
+    columns: z.array(z.string()).min(1).describe(REPORT_COLUMNS_GUIDE),
     datePreset: z
       .enum(DATE_PRESET_VALUES)
       .optional()

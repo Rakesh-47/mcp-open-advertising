@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
+import { CRITERIONS_DATA_GUIDE } from "../utils/field-guides.js";
 import type { MsAdsBatchWriteSpec } from "../../../services/msads/msads-service.js";
 import {
   McpError,
@@ -40,7 +41,7 @@ export const ManageCriterionsInputSchema = z
     entityLevel: z
       .enum(["campaign", "adGroup"])
       .describe("Whether targeting is at campaign or ad group level"),
-    data: z.record(z.unknown()).describe("Operation data (varies by operation)"),
+    data: z.record(z.unknown()).describe(CRITERIONS_DATA_GUIDE),
     dry_run: z
       .boolean()
       .optional()

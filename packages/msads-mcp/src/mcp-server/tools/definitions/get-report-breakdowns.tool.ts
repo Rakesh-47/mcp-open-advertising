@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
+import { REPORT_TYPE_GUIDE, REPORT_COLUMNS_GUIDE } from "../utils/field-guides.js";
 import {
   arrayRowsToRecords,
   createReportView,
@@ -29,12 +30,9 @@ Results will include one row per combination of entity + breakdown dimensions.`;
 
 export const GetReportBreakdownsInputSchema = z
   .object({
-    reportType: z.string().describe("Report type (e.g., CampaignPerformanceReportRequest)"),
+    reportType: z.string().describe(REPORT_TYPE_GUIDE),
     accountId: z.string().describe("Microsoft Ads Account ID"),
-    columns: z
-      .array(z.string())
-      .min(1)
-      .describe("Base metric/attribute columns (e.g., CampaignName, Impressions, Clicks, Spend)"),
+    columns: z.array(z.string()).min(1).describe(REPORT_COLUMNS_GUIDE),
     breakdownColumns: z
       .array(z.string())
       .min(1)
