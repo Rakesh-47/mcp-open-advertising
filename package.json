@@ -15,6 +15,7 @@
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "test:scripts": "vitest run --config vitest.config.scripts.ts",
+    "ci:local": "node scripts/ci-local.mjs",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",

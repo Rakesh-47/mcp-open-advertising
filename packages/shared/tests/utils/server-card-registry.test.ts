@@ -1,7 +1,7 @@
 // Copyright (c) Cesteral AB. Licensed under the Apache License, Version 2.0.
 // See LICENSE.md in the project root for full license terms.
 
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import { describe, expect, it } from "vitest";
@@ -38,8 +38,14 @@ describe("registry.json ↔ server-card consistency", () => {
     expect(SUPPORTED_PROTOCOL_VERSIONS).toContain(registry.protocol_version);
   });
 
-  it("lists exactly the 13 production servers", () => {
-    expect(registry.servers).toHaveLength(13);
+  it("lists exactly the workspace's server packages", () => {
+    // Derived, not a count: a hardcoded fleet size fails every new server for
+    // no reason. scripts/lib/fleet-inventory.test.mjs carries the same two-way
+    // check alongside the other hand-maintained server lists.
+    const workspace = readdirSync(resolve(repoRoot, "packages"))
+      .filter((p) => p.endsWith("-mcp"))
+      .sort();
+    expect(registry.servers.map((s) => s.package).sort()).toEqual(workspace);
   });
 
   it.each(registry.servers.map((s) => [s.package, s] as const))(

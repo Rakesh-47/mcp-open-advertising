@@ -37,16 +37,15 @@ Before starting significant work, open an issue first to discuss the approach. T
 3. Make your changes
 4. Ensure all checks pass:
    ```bash
-   pnpm run build
-   pnpm run typecheck
-   pnpm run test
+   corepack pnpm ci:local
    ```
+   This runs `.github/workflows/ci.yml`'s jobs in order: formatting, the registry and inventory checks, build, lint, the repo-script ratchets (`test:scripts`), manifests, typecheck, tests, conformance, and — when `terraform` and `gitleaks` are installed — Terraform validation and the secret scan. Jobs it cannot run are reported as NOT RUN. `pnpm run build`/`typecheck`/`test` alone skip most of what CI checks.
 5. Commit with a clear message (see [Commit Messages](#commit-messages))
 6. Push your branch and open a PR against `main`
 
 **PR requirements:**
 
-- All existing tests pass
+- `corepack pnpm ci:local` passes (or each NOT RUN job is explained)
 - New functionality includes tests
 - TypeScript compiles without errors
 - Description explains **what** changed and **why**

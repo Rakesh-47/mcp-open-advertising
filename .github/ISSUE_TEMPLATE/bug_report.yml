@@ -44,9 +44,10 @@ body:
       description: Which authentication mode are you using?
       options:
         - google-headers
+        - gads-headers
         - jwt
         - none
-        - ttd-headers
+        - ttd-token
         - meta-bearer
         - linkedin-bearer
         - tiktok-bearer
