@@ -46,7 +46,7 @@ The Docker publish is part of the deploy flow — there's no standalone "publish
 ./scripts/deploy.sh <dev|prod> --plan-only # builds + pushes, but only Terraform-plans
 ```
 
-Cloud Build runs the same flow on push via `cloudbuild.yaml`.
+`cloudbuild.yaml` runs the build, scan and push half of this in Cloud Build. It deploys only with `_DEPLOY=true`, which needs a deploying service account (see [deployment-instructions.md](deployment-instructions.md)).
 
 ### Manual image build (without Terraform)
 

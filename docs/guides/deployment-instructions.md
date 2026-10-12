@@ -148,18 +148,26 @@ Outputs `[PASS]`, `[FAIL]`, or `[INFO]` (skipped — not deployed) per server. E
 
 Instead of the manual `deploy.sh` flow, use Cloud Build for automated deployments.
 
-### Automated Pipeline (`cloudbuild.yaml`)
+### Cloud Build Pipeline (`cloudbuild.yaml`)
 
-Triggered on Git push. Runs the full pipeline:
+No trigger is configured; submit it by hand. It is **build-only by default**:
 
-1. **Test** — `pnpm install`, `build`, `typecheck`, `test`
-2. **Build images** — all 13 servers in parallel
-3. **Vulnerability scan** — Trivy (blocks on HIGH/CRITICAL findings)
-4. **Push images** — to Artifact Registry
-5. **Terraform init → validate → lint → plan → apply**
-6. **Health checks** — with auto-rollback on failure
+1. **Test**: `pnpm install`, registry checks, `build`, `typecheck`, `test` (two packages at a time)
+2. **Build images**: one at a time, so images after the first reuse the cached monorepo build
+3. **Vulnerability scan**: Trivy, blocking on fixable HIGH/CRITICAL findings
+4. **Push images** to Artifact Registry
+5. **Terraform validate and tflint**, against `terraform init -backend=false`
 
-Machine type: `N1_HIGHCPU_8`. Timeout: 40 minutes.
+```bash
+gcloud builds submit --config=cloudbuild.yaml --region=europe-west2 \
+  --substitutions=_ENVIRONMENT=dev,SHORT_SHA=$(git rev-parse --short=8 HEAD)
+```
+
+`SHORT_SHA` is only filled in by triggers, so pass it on a manual submit.
+
+With `_DEPLOY=true` it also runs Terraform plan and apply (by image digest), then health checks with auto-rollback. That needs a build service account allowed to plan and apply the whole stack, including project IAM bindings, which is effectively Owner. The default compute service account only has `roles/cloudbuild.builds.builder`, so until such an identity is chosen, deploy with `scripts/deploy.sh`. A deploying run also needs the gitignored `terraform/<env>.tfvars` and `terraform/backend-<env>.conf` in the upload.
+
+Machine: the default pool (`e2-standard-2`, covered by the free build-minutes). Timeout: 60 minutes.
 
 > **Production note:** Add a [Cloud Build approval gate](https://cloud.google.com/build/docs/securing-builds/gate-builds-on-approval) before the `terraform-apply` step for production environments.
 

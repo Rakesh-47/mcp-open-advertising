@@ -160,19 +160,16 @@ Production deployments require extra confirmation:
 # (will prompt for confirmation)
 ```
 
-## Alternative: Cloud Build CI/CD
+## Alternative: Cloud Build
 
-For automated deployments, use Cloud Build instead:
+`cloudbuild.yaml` tests, builds, scans and pushes the images. It is build-only unless `_DEPLOY=true`, which needs a service account allowed to apply the Terraform stack; see `docs/guides/deployment-instructions.md`.
 
 ```bash
-# Manual trigger via gcloud
 gcloud builds submit \
   --config=cloudbuild.yaml \
-  --substitutions=_ENVIRONMENT=dev \
+  --region=europe-west2 \
+  --substitutions=_ENVIRONMENT=dev,SHORT_SHA=$(git rev-parse --short=8 HEAD) \
   --project=YOUR_GCP_PROJECT_DEV
-
-# Or set up automated triggers in Cloud Console
-# Triggers > Create Trigger > Connect Repository
 ```
 
 ## Troubleshooting
