@@ -1,8 +1,73 @@
-# Cesteral Deployment Scripts
+# Cesteral Scripts
 
-This directory contains helper scripts for deploying and managing the Cesteral MCP servers on GCP.
+Helper scripts for building, checking, releasing and deploying the Cesteral MCP servers. The deployment scripts are described in detail further down; this page starts with an index of everything.
 
-## Scripts Overview
+## Script index
+
+Most scripts have a `pnpm run` alias in the root `package.json`; use the alias where one is listed. A script path named in `package.json`, a workflow, Cloud Build or the Dockerfile is checked by `scripts/lib/script-path-references.test.mjs`, so a moved script fails CI instead of failing on a tag or a timer.
+
+### Run, build and test locally
+
+| Script                | Run it as                                       | What it does                                                                                                     |
+| --------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `dev-server.sh`       | `./scripts/dev-server.sh <server>`              | Runs one server locally on its registry port.                                                                    |
+| `build-all.sh`        | `./scripts/build-all.sh`                        | Cleans, then builds every package with Turborepo.                                                                |
+| `ci-local.mjs`        | `pnpm ci:local`                                 | Runs the PR CI workflow's steps locally. The steps are read from `.github/workflows/ci.yml` at run time.         |
+| `conformance-test.sh` | `pnpm test:conformance` / `test:conformance:ci` | Runs the MCP conformance suite against one or all servers (`--full` runs the slow active suite).                 |
+| `fleet.mjs`           | `node scripts/fleet.mjs servers`                | Prints the fleet's server list (or one server's `port`) from `registry.json`, for shell scripts and Cloud Build. |
+
+### Deploy and operate (GCP)
+
+| Script                | Run it as                                                | What it does                                                                  |
+| --------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `init-gcp-project.sh` | `./scripts/init-gcp-project.sh <env>`                    | One-time bootstrap of a GCP project. [Details](#1-init-gcp-projectsh).        |
+| `create-secrets.sh`   | `./scripts/create-secrets.sh <env>`                      | Creates the Secret Manager entries. [Details](#2-create-secretssh).           |
+| `deploy.sh`           | `./scripts/deploy.sh <env> [--skip-build] [--plan-only]` | Builds and pushes the images, then applies Terraform. [Details](#3-deploysh). |
+| `smoke-test.sh`       | `./scripts/smoke-test.sh <dev\|prod>`                    | For each deployed service, checks `/health` and an MCP `ping` on `/mcp`.      |
+
+### Release
+
+| Script                    | Run it as                                    | What it does                                                                                                                                  |
+| ------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `publish-all.sh`          | `./scripts/publish-all.sh [--dry-run]`       | Publishes the packages to npm and the MCP Registry. The tag-triggered `release.yml` calls it. See [publishing](../docs/guides/publishing.md). |
+| `inspect-tarball.mjs`     | `node scripts/inspect-tarball.mjs <tgz>`     | Pre-publish check of a packed tarball (called by `publish-all.sh`).                                                                           |
+| `is-governed-package.mjs` | `node scripts/is-governed-package.mjs <pkg>` | Exit 0 if the package is `governed: true` in `registry.json` (called by `publish-all.sh`).                                                    |
+
+### `check/`: guards that fail CI
+
+Read-only; each exits non-zero on a violation.
+
+| Script                                       | Alias                                                    | Guards against                                                                                              |
+| -------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `check-account-scope.mjs`                    | `check:account-scope`                                    | A single-account tool that reads the session's account id but never calls `assertAccountScope()`.           |
+| `check-contract-version-bump.mjs`            | `check:contract-version-bump`                            | Editing a contract library's `src/` without a version bump (PR guard).                                      |
+| `check-contract-hash-published-parity.mjs`   | `check:contract-hash-parity`                             | The workspace `contract-hash` hashing differently from the published package (release guard).               |
+| `check-contract-schema-published-parity.mjs` | `check:contract-schema-parity`                           | The workspace `contract-schema` accepting different annotations than the published package (release guard). |
+| `check-doc-tool-counts.mjs`                  | `check:doc-tool-counts`                                  | The README fleet table's tool counts drifting from `registry.json`.                                         |
+| `check-registry-runtime.mjs`                 | `check:registry-runtime`                                 | `registry.json` tools and prompts differing from what each built server advertises (needs a build).         |
+| `check-platform-facts.mjs`                   | `check:platform-facts`, `check:platform-facts:freshness` | The platform-facts ledger disagreeing with the code, or expired facts (`--freshness`).                      |
+| `check-terraform-drift.mjs`                  | `check:terraform-drift`                                  | Terraform state drifting from live GCP (needs Terraform and credentials; scheduled).                        |
+| `check-dv360-codegen-drift.mjs`              | `check:dv360-codegen-drift`                              | The committed dv360 schemas differing from Google's live Discovery document (network; scheduled).           |
+
+### `generate/`: generators and sync scripts
+
+The sync scripts and `generate-server-json.mjs` take `--check` (or have a `check:` alias) to verify without writing.
+
+| Script                            | Alias                                         | What it writes                                                                                            |
+| --------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `generate-manifests.mjs`          | `generate:manifests`                          | `dist/cesteral-manifest.json` for every package with governed tools (needs a build).                      |
+| `generate-server-json.mjs`        | `generate:registry`, `check:registry`         | Each package's MCP Registry `server.json`, from `registry.json` and `package.json`.                       |
+| `sync-registry-tools.mjs`         | `sync:registry-tools`, `check:registry-tools` | The tool lists in `registry.json`, from the tool definition files.                                        |
+| `sync-registry-data.mjs`          | `sync:registry-data`                          | `packages/shared/src/utils/transport/registry-data.generated.ts`, run by `@cesteral/shared`'s `prebuild`. |
+| `sync-untrusted-declarations.mjs` | `sync:untrusted-declarations`                 | `scripts/lib/untrusted-declarations.snapshot.json`; run after an intended `untrustedContent` change.      |
+
+### `lib/` and `__tests__/`
+
+- `lib/` holds the modules the scripts share (server boot harness, manifest building, ledger and audit logic) and the repo-wide invariant tests that boot every server, such as write-tool governance coverage and the script-path guard. Their allowlists and snapshots (`*.json`) live beside them.
+- `__tests__/` holds the tests for the scripts in `check/`, for `ci-local.mjs` and `publish-all.sh`, and the pin on the release workflow's identity.
+- Both are run by `pnpm test:scripts` (Vitest, config in `vitest.config.scripts.ts`), which CI runs on every pull request. Most of these tests boot built servers, so run `pnpm run build` first.
+
+## Deployment scripts
 
 ### 1. `init-gcp-project.sh`
 
