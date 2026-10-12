@@ -52,7 +52,7 @@ steps:
     id: 'build-images'
     waitFor: ['test']
 
-  - name: 'aquasecurity/trivy:0.55.2'
+  - name: 'aquasec/trivy:0.55.2'
     entrypoint: 'sh'
     args:
       - '-c'
