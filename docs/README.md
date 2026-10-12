@@ -32,17 +32,26 @@ Navigation index for the `docs/` directory. Every file under `docs/` is reachabl
 
 ### Developers
 
-| Document                                                                                 | Description                                         |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| [`repository-structure.md`](repository-structure.md)                                     | Repo layout: packages, scripts, evals, infra, CI    |
-| [`CROSS_SERVER_CONTRACT.md`](CROSS_SERVER_CONTRACT.md)                                   | Standards all management MCP servers must follow    |
-| [`guides/ENV-VARIABLES-GUIDE.md`](guides/ENV-VARIABLES-GUIDE.md)                         | Environment configuration reference for all servers |
-| [`guides/platform-mapping.md`](guides/platform-mapping.md)                               | Platform-to-package mapping and naming rules        |
-| [`guides/adding-a-new-server.md`](guides/adding-a-new-server.md)                         | Step-by-step guide for adding a new MCP server      |
-| [`architecture/mcp-microservice-topology.md`](architecture/mcp-microservice-topology.md) | Service topology and inter-server access patterns   |
-| [`architecture/monorepo-strategy.md`](architecture/monorepo-strategy.md)                 | Why one monorepo, and what stays independent        |
-| [`../scripts/README.md`](../scripts/README.md)                                           | Deployment and bootstrap scripts                    |
-| [`../CONTRIBUTING.md`](../CONTRIBUTING.md)                                               | Contribution workflow                               |
+| Document                                                                                               | Description                                                           |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| [`repository-structure.md`](repository-structure.md)                                                   | Repo layout: packages, scripts, evals, infra, CI                      |
+| [`CROSS_SERVER_CONTRACT.md`](CROSS_SERVER_CONTRACT.md)                                                 | Standards all management MCP servers must follow                      |
+| [`guides/ENV-VARIABLES-GUIDE.md`](guides/ENV-VARIABLES-GUIDE.md)                                       | Environment configuration reference for all servers                   |
+| [`guides/platform-mapping.md`](guides/platform-mapping.md)                                             | Platform-to-package mapping and naming rules                          |
+| [`guides/adding-a-new-server.md`](guides/adding-a-new-server.md)                                       | Step-by-step guide for adding a new MCP server                        |
+| [`architecture/mcp-microservice-topology.md`](architecture/mcp-microservice-topology.md)               | Service topology and inter-server access patterns                     |
+| [`architecture/monorepo-strategy.md`](architecture/monorepo-strategy.md)                               | Why one monorepo, and what stays independent                          |
+| [`architecture/server-card-operational-envelope.md`](architecture/server-card-operational-envelope.md) | The server card's `operational` block: rate limits, retries, rollback |
+| [`architecture/untrusted-content-marking.md`](architecture/untrusted-content-marking.md)               | How platform text in tool results is marked untrusted                 |
+| [`architecture/platform-facts-ledger.md`](architecture/platform-facts-ledger.md)                       | The ledger of claims about external platforms, and its CI checks      |
+| [`architecture/release-attestation.md`](architecture/release-attestation.md)                           | Release manifest, `definitionHash`, and verification status           |
+| [`architecture/governance-runtime.md`](architecture/governance-runtime.md)                             | Decision-token enforce mode and the distributed jti store             |
+| [`architecture/http-transport-security.md`](architecture/http-transport-security.md)                   | DNS-rebinding protection and server→client message routing            |
+| [`architecture/tool-failure-logging.md`](architecture/tool-failure-logging.md)                         | `tool_failure` records, destinations, redaction                       |
+| [`architecture/report-csv-spill.md`](architecture/report-csv-spill.md)                                 | Spilling large report CSVs to GCS                                     |
+| [`architecture/evals.md`](architecture/evals.md)                                                       | Tool-search ranking and cross-server routing evals                    |
+| [`../scripts/README.md`](../scripts/README.md)                                                         | Deployment and bootstrap scripts                                      |
+| [`../CONTRIBUTING.md`](../CONTRIBUTING.md)                                                             | Contribution workflow                                                 |
 
 ### MCP prompts and protocol
 
@@ -86,7 +95,7 @@ These are point-in-time documents. They record why something was built or what a
 
 ### Per-package docs
 
-Package-specific docs live next to the package, not here:
+Package-specific docs live next to the package, not here. Each server with platform quirks also has a `packages/<server>/CLAUDE.md`, which Claude Code loads when working in that package; the root [`CLAUDE.md`](../CLAUDE.md) lists them.
 
 | Package                                              | Docs                                                                                                                                                                                            |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -113,7 +113,7 @@ export class SessionServiceStore<T> {
    * Consequence, accepted and documented: when a session's services live on
    * another instance, the DELETE that reaches THIS instance no longer sweeps its
    * spilled objects early. The 24-hour GCS lifecycle rule on the `report_spill`
-   * bucket is the primary control (see CLAUDE.md); the hook has always been
+   * bucket is the primary control (see docs/architecture/report-csv-spill.md); the hook has always been
    * belt-and-braces on top of it.
    */
   delete(sessionId: string): void {

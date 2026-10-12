@@ -87,7 +87,7 @@
       "refreshDue": null,
       "loadBearing": true,
       "codeRefs": [
-        "CLAUDE.md:122",
+        "packages/meta-mcp/CLAUDE.md:5",
         "packages/meta-mcp/src/mcp-server/tools/utils/v26-targeting-warnings.ts:34"
       ],
       "verificationBasis": "corroborated-secondary",
@@ -275,7 +275,7 @@
       "verifyBy": "2027-03-16",
       "refreshDue": null,
       "loadBearing": true,
-      "codeRefs": ["CLAUDE.md:128"]
+      "codeRefs": ["packages/sa360-mcp/CLAUDE.md:5"]
     },
     {
       "id": "pinterest.media_endpoint_is_video_only",
@@ -289,7 +289,7 @@
       "verifyBy": "2027-03-16",
       "refreshDue": null,
       "loadBearing": true,
-      "codeRefs": ["CLAUDE.md:125"]
+      "codeRefs": ["packages/pinterest-mcp/CLAUDE.md:5"]
     },
     {
       "id": "dv360.line_items_require_archive_before_delete",
@@ -303,7 +303,7 @@
       "verifyBy": "2027-03-16",
       "refreshDue": null,
       "loadBearing": true,
-      "codeRefs": ["CLAUDE.md:118"]
+      "codeRefs": ["packages/dv360-mcp/CLAUDE.md:5"]
     },
     {
       "id": "amazon_dsp.refresh_token_expires_at_365_days",

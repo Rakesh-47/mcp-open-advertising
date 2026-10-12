@@ -11,7 +11,7 @@
  * — a 100% write outage for that server the moment its posture is raised.
  *
  * sa360-mcp shipped without it while the other eleven governed servers had it.
- * That lands badly: per CLAUDE.md sa360's ONLY governed writes are the offline
+ * That lands badly: per packages/sa360-mcp/CLAUDE.md sa360's ONLY governed writes are the offline
  * conversion upload/modify (`insert_conversions` / `update_conversions`), so the
  * gap covered all of them.
  *

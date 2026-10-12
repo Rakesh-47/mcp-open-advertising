@@ -542,7 +542,7 @@ describe("tool-handler-factory governance verification", () => {
   // Sweep 2026-07-25, 10-F1. This test was named "injected distributed store"
   // and injected an `InMemoryJtiStore`, pinning the in-memory-under-enforce case
   // as safe. That is the defect: the guard keyed on `Boolean(opts.jtiStore)`, so
-  // following half of CLAUDE.md §6's remediation — wiring `selectJtiStore(...)`
+  // following half of governance-runtime.md's remediation — wiring `selectJtiStore(...)`
   // without `GOVERNANCE_JTI_STORE=firestore` — produced silence instead of the
   // throw the unwired case correctly gets.
   it("P3: hosted + injected NON-distributed store still throws (10-F1)", () => {

@@ -6,7 +6,7 @@
 // so clients can cache it and LLM prompt caches keep hitting: the merged fleet
 // catalog is ~125k tokens, and one reordered tool invalidates everything after
 // it in a cached prefix. The order is also load-bearing here already — the
-// tool-search ranker breaks score ties by registry order (see CLAUDE.md,
+// tool-search ranker breaks score ties by registry order (see docs/architecture/evals.md,
 // "Ranker facts").
 //
 // Nothing asserted it. Today it holds because every server registers a fixed

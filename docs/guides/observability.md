@@ -171,4 +171,4 @@ A short summary you can hand to your security review:
 
 - [`packages/shared/src/utils/interaction-logger.ts`](../../packages/shared/src/utils/interaction-logger.ts) — implementation
 - [`packages/shared/src/utils/http-request-recorder.ts`](../../packages/shared/src/utils/http-request-recorder.ts) — upstream capture + redaction
-- [`CLAUDE.md`](../../CLAUDE.md#tool-failure-logging) — internal reference (record shape, env vars)
+- [`tool-failure-logging.md`](../architecture/tool-failure-logging.md) — internal reference (record shape, env vars)

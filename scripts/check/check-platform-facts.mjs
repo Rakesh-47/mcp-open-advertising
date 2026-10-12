@@ -5,7 +5,7 @@
 //
 // This repo is full of load-bearing claims about external platforms — sixteen
 // hardcoded API base URLs, a date-versioned LinkedIn header, and a set of
-// behavioural constraints in CLAUDE.md that shape entire packages. Until now not
+// behavioural constraints in the per-package CLAUDE.md files that shape entire packages. Until now not
 // one of them recorded when it was last verified or when it should be
 // re-checked, and we already know what that costs:
 //
