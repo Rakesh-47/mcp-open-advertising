@@ -12,13 +12,23 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
+  # The fleet's service list, from registry.json, for the later steps (their
+  # images have no node).
+  - name: 'node:20-slim'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - 'node scripts/fleet.mjs servers > /workspace/.fleet-services'
+    id: 'fleet-services'
+
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'sh'
     args:
       - '-c'
       - |
         set -eu
-        SERVICES="dbm-mcp dv360-mcp ttd-mcp gads-mcp meta-mcp linkedin-mcp tiktok-mcp cm360-mcp sa360-mcp pinterest-mcp snapchat-mcp amazon-dsp-mcp msads-mcp"
+        SERVICES="$(cat /workspace/.fleet-services)"
+        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
         for SERVICE in $SERVICES; do
           docker build \
             -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}:${SHORT_SHA}" \
@@ -35,7 +45,8 @@ steps:
       - '-c'
       - |
         set -eu
-        SERVICES="dbm-mcp dv360-mcp ttd-mcp gads-mcp meta-mcp linkedin-mcp tiktok-mcp cm360-mcp sa360-mcp pinterest-mcp snapchat-mcp amazon-dsp-mcp msads-mcp"
+        SERVICES="$(cat /workspace/.fleet-services)"
+        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
         for SERVICE in $SERVICES; do
           docker push --all-tags "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}" &
         done
@@ -43,6 +54,9 @@ steps:
     id: 'push-images'
     waitFor: ['build-images']
 
+# Static: Cloud Build's images: field cannot read registry.json, so this list
+# is hand-maintained. scripts/lib/fleet-inventory.test.mjs fails if it drifts
+# from the registry.
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/dbm-mcp:${SHORT_SHA}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/dbm-mcp:${_ENVIRONMENT}-latest'

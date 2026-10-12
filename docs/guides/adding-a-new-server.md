@@ -138,6 +138,8 @@ Do this **before** writing server code. `buildServerInfo()` and `buildServerCard
 ```jsonc
 {
   "package": "{platform}-mcp",
+  "port": 3014, // the port you allocated; must equal your config's default
+  "tool_prefix": "{prefix}", // must match the prefix your tool names share
   "governed": true, // see Step 9.5 before setting false
   "title": "{Platform} Ads MCP Server", // must end in "MCP Server"
   "description": "{Platform} Ads management — CRUD, reporting, ...",
@@ -157,7 +159,7 @@ Do this **before** writing server code. `buildServerInfo()` and `buildServerCard
 
 Every other package also needs `"mcpName": "io.github.cesteral/{platform}-mcp"` in its `package.json` (Step 18); `corepack pnpm generate:registry` then writes the committed `packages/{platform}-mcp/server.json`.
 
-The **port** you allocated must be the `port` default in your config (Step 2). The conformance script's `get_port` entry is checked against it.
+The **port** must equal the `port` default in your config (Step 2), and **`tool_prefix`** must be the prefix your tool names share. Both are checked. The release, conformance, deploy and smoke scripts, Cloud Build and the dev-server usage text all read the server list and ports from the registry (`node scripts/fleet.mjs servers` / `port <package>`), so registering here is what adds the server to them.
 
 ## Step 1: Scaffold the Package
 
@@ -1724,23 +1726,18 @@ corepack pnpm generate:manifests             # dist/cesteral-manifest.json (not 
 
 ### 3. Add the server to every hand-maintained list
 
-`scripts/lib/fleet-inventory.test.mjs` fails, naming the file and list, until the server appears in each of these. Leaving one out was silent before that check existed: the server would never be published, built, deployed or conformance-tested.
+The scripts, Cloud Build's steps and the Dockerfile read the server list from `registry.json`, so they need no edit. What remains is static configuration that cannot read the registry, and Terraform (whose move to a registry-driven `for_each` is a separate migration). `scripts/lib/fleet-inventory.test.mjs` fails, naming the file and list, until the server appears in each of these.
 
 | File                                                               | What to add                                                                                                                                                                                                                                                    |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/publish-all.sh`                                           | `SERVERS` entry                                                                                                                                                                                                                                                |
-| `scripts/conformance-test.sh`                                      | `get_port` case (must equal your config's default port) and default `SERVERS` entry                                                                                                                                                                            |
-| `scripts/deploy.sh`, `scripts/smoke-test.sh`                       | `SERVERS` entry                                                                                                                                                                                                                                                |
-| `scripts/dev-server.sh`                                            | usage text                                                                                                                                                                                                                                                     |
-| `cloudbuild.yaml`, `cloudbuild-manual.yaml`                        | every `SERVICES=` list, the literal `for SERVICE in` loop, and both `images:` tags                                                                                                                                                                             |
-| `Dockerfile` (one shared file, built with `SERVER_NAME`)           | `COPY packages/{platform}-mcp/package.json` line                                                                                                                                                                                                               |
+| `cloudbuild.yaml`, `cloudbuild-manual.yaml`                        | both `images:` tags (static Cloud Build config; the build steps read the registry)                                                                                                                                                                             |
 | `terraform/main.tf`                                                | the `module` block, monitoring `services` entry, `fleet_service_names`, `fleet_lb` `depends_on`, and the `{platform}_secret_names`, `{platform}_resources`, `service_auth_defaults` (a mode from your registry `auth.modes`) and `{platform}_auth_mode` locals |
 | `terraform/variables.tf`                                           | `{platform}_mcp_image` and `{platform}_secret_env_vars` variables                                                                                                                                                                                              |
 | `terraform/outputs.tf`, `terraform/{dev,prod}.tfvars.example`      | the service-URL outputs; the `{platform}_mcp_image` example line                                                                                                                                                                                               |
 | `.github/ISSUE_TEMPLATE/*.yml`                                     | server dropdowns; your auth mode in `bug_report.yml`'s auth-mode dropdown                                                                                                                                                                                      |
 | `docs/CROSS_SERVER_CONTRACT.md`, `docs/guides/platform-mapping.md` | inventory rows                                                                                                                                                                                                                                                 |
 
-Besides those named lists, the check counts how many lines of each file mention each server. In a file where every server should appear equally often, a server mentioned on fewer lines than the rest is missing from some list, even one the check does not name. That covers `main.tf`, `outputs.tf`, the tfvars examples, the scripts, Cloud Build and the Dockerfile. It cannot cover `variables.tf` (servers declare different numbers of secrets), `conformance-test.sh`, `bug_report.yml` or the contract doc; there, only the named lists above are checked.
+Besides those named lists, the check counts how many lines of each file mention each server. In a file where every server should appear equally often, a server mentioned on fewer lines than the rest is missing from some list, even one the check does not name. That covers `main.tf`, `outputs.tf`, the tfvars examples, Cloud Build's `images:` and the issue forms. It cannot cover `variables.tf` (servers declare different numbers of secrets), `bug_report.yml` or the contract doc; there, only the named lists above are checked.
 
 **Deployment work no check covers.** The checks prove the server is _listed_; they cannot prove it will _run_ in Cloud Run:
 

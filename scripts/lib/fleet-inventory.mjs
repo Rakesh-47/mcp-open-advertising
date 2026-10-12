@@ -22,11 +22,16 @@
 // mention every server equally often, a server mentioned less often is missing
 // from some list, configured or not. Files that cannot be censused say why.
 //
-// These lists should eventually be derived from registry.json instead of
-// checked against it; until then, this is what keeps them honest.
+// The scripts, Cloud Build's steps and the Dockerfile no longer keep lists:
+// they read registry.json (`scripts/fleet.mjs`, `pnpm fetch`). DERIVED keeps
+// them that way, and the registry fields they rely on (`port`, `tool_prefix`)
+// are checked against the code. What remains here is static configuration
+// that cannot read the registry (Cloud Build `images:`, issue forms, docs) and
+// Terraform, whose move to `for_each` is a separate state migration.
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { derivePrefix } from "../../evals/lib/merged-catalog.mjs";
 
 const SERVER_TOKEN = /\b[a-z0-9]+(?:-[a-z0-9]+)*-mcp\b/g;
 
@@ -62,14 +67,6 @@ function dropdownOptions(text, id) {
     .filter(Boolean);
 }
 
-/** `SERVERS=(` … `)` arrays written one entry per line. */
-function bashServerArrays(text) {
-  return captures(text, /^SERVERS=\(\n([\s\S]*?)^\)/gm).map((b) => ({
-    where: "SERVERS",
-    names: serverTokens(b),
-  }));
-}
-
 /**
  * A site is a hand-maintained list. `lists(text)` returns one entry per
  * occurrence of the list in the file, `{ where, names, why? }`, and each occurrence
@@ -77,58 +74,12 @@ function bashServerArrays(text) {
  * `expected(servers)` when a site lists something else.
  */
 export const INVENTORY_SITES = [
-  {
-    file: "scripts/publish-all.sh",
-    why: "release never publishes the package to npm or the MCP Registry",
-    lists: bashServerArrays,
-  },
-  {
-    file: "scripts/conformance-test.sh",
-    why: "CI's conformance job skips the server",
-    lists: (t) => [
-      ...captures(t, /^\s+SERVERS=\(("[a-z0-9-]+-mcp"[^)]*)\)/gm).map((b) => ({
-        where: "default SERVERS",
-        names: serverTokens(b),
-      })),
-      ...captures(t, /get_port\(\) \{\n([\s\S]*?)\n\}/g).map((b) => ({
-        where: "get_port case arms",
-        names: captures(b, /^\s+([a-z0-9-]+-mcp)\)/gm),
-      })),
-    ],
-  },
-  {
-    file: "scripts/deploy.sh",
-    why: "the manual deploy script never builds or deploys the server",
-    lists: bashServerArrays,
-  },
-  {
-    file: "scripts/smoke-test.sh",
-    why: "post-deploy smoke tests never probe the server",
-    lists: bashServerArrays,
-  },
-  {
-    file: "scripts/dev-server.sh",
-    why: "the usage text does not offer the server",
-    lists: (t) =>
-      captures(t, /Available servers: ([^"]+)"/g).map((b) => ({
-        where: "usage text",
-        names: serverTokens(b),
-      })),
-  },
   ...["cloudbuild.yaml", "cloudbuild-manual.yaml"].map((file) => ({
     file,
-    why: "Cloud Build never builds, scans, pushes or deploys an image for the server",
+    why: "Cloud Build does not record the server's images (the steps read the registry; images: is static)",
     lists: (t) => {
       const images = t.slice(Math.max(0, t.search(/^images:/m)));
       return [
-        ...captures(t, /(?<![A-Z_])SERVICES="([^"]+)"/g).map((b, i) => ({
-          where: `SERVICES= list #${i + 1}`,
-          names: serverTokens(b),
-        })),
-        ...captures(t, /for SERVICE in ([a-z0-9 -]+); do/g).map((b, i) => ({
-          where: `literal for-loop #${i + 1}`,
-          names: serverTokens(b),
-        })),
         {
           where: "images: ':${SHORT_SHA}' entries",
           names: captures(images, /\/([a-z0-9-]+-mcp):\$\{SHORT_SHA\}'/g),
@@ -140,16 +91,6 @@ export const INVENTORY_SITES = [
       ];
     },
   })),
-  {
-    file: "Dockerfile",
-    why: "the image's frozen install cannot resolve the workspace graph",
-    lists: (t) => [
-      {
-        where: "COPY packages/<server>/package.json lines",
-        names: captures(t, /^COPY packages\/([a-z0-9-]+-mcp)\/package\.json/gm),
-      },
-    ],
-  },
   {
     file: "terraform/main.tf",
     why: "Terraform never creates, monitors or routes the Cloud Run service",
@@ -293,15 +234,8 @@ export const INVENTORY_SITES = [
  * alone, so a list added there needs a site.
  */
 export const CENSUS = {
-  "scripts/publish-all.sh": true,
-  "scripts/conformance-test.sh":
-    "its *_MCP_PORT env block deliberately names only some servers (get_port, which is checked, sets the port anyway)",
-  "scripts/deploy.sh": true,
-  "scripts/smoke-test.sh": true,
-  "scripts/dev-server.sh": true,
   "cloudbuild.yaml": true,
   "cloudbuild-manual.yaml": true,
-  Dockerfile: true,
   "terraform/main.tf": true,
   "terraform/variables.tf":
     "each server declares a different number of secrets, so per-server line counts legitimately differ",
@@ -330,6 +264,49 @@ export function censusShortfalls(text, packages) {
   for (const c of counts.values()) freq.set(c, (freq.get(c) ?? 0) + 1);
   const mode = [...freq.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0];
   return [...counts].filter(([, c]) => c < mode).map(([pkg, c]) => ({ pkg, count: c, mode }));
+}
+
+/**
+ * Files that used to carry their own server list and now derive it from
+ * registry.json. Each must still read the registry (`reads`), and must not
+ * grow a hardcoded list again. `scope` limits the search where a file keeps
+ * one deliberately static list (Cloud Build's `images:`, checked above).
+ */
+export const DERIVED = [
+  { file: "scripts/publish-all.sh", reads: "scripts/fleet.mjs" },
+  { file: "scripts/conformance-test.sh", reads: "scripts/fleet.mjs" },
+  { file: "scripts/deploy.sh", reads: "scripts/fleet.mjs" },
+  { file: "scripts/smoke-test.sh", reads: "scripts/fleet.mjs" },
+  { file: "scripts/dev-server.sh", reads: "fleet.mjs" },
+  {
+    file: "cloudbuild.yaml",
+    reads: "/workspace/.fleet-services",
+    scope: (t) => t.slice(0, t.search(/^images:/m)),
+  },
+  {
+    file: "cloudbuild-manual.yaml",
+    reads: "/workspace/.fleet-services",
+    scope: (t) => t.slice(0, t.search(/^images:/m)),
+  },
+  { file: "Dockerfile", reads: "pnpm fetch" },
+];
+
+/**
+ * Lines of `text` that look like a hand-written server list: one line naming
+ * two or more servers, or three consecutive lines each naming one.
+ */
+export function hardcodedServerLists(text) {
+  const lines = text.split("\n");
+  const hits = [];
+  let run = [];
+  lines.forEach((line, i) => {
+    const n = serverTokens(line).length;
+    if (n >= 2) hits.push(i + 1);
+    if (n >= 1) run.push(i + 1);
+    else run = [];
+    if (run.length === 3) hits.push(run[0]);
+  });
+  return [...new Set(hits)].sort((a, b) => a - b);
 }
 
 /** Workspace server packages: `packages/*-mcp`. */
@@ -448,24 +425,60 @@ export function checkFleetInventory(root, registry = readRegistry(root)) {
     }
   }
 
-  // Ports: the conformance script must start each server on the port it binds
-  // by default, and no two servers may default to the same port.
-  const conformance = readFileSync(join(root, "scripts/conformance-test.sh"), "utf8");
-  const scriptPorts = new Map(
-    [...conformance.matchAll(/^\s+([a-z0-9-]+-mcp)\)\s+echo (\d+) ;;/gm)].map((m) => [
-      m[1],
-      Number(m[2]),
-    ])
-  );
-  const owner = new Map();
-  for (const [pkg, port] of defaultPorts(root, packages, violations)) {
-    if (owner.has(port)) {
-      violations.push(`port ${port}: default for both ${owner.get(port)} and ${pkg}`);
+  // Registry fields the derived lists rely on.
+  const ports = defaultPorts(root, packages, violations);
+  const portOwner = new Map();
+  const prefixOwner = new Map();
+  for (const server of servers) {
+    const { package: pkg, port, tool_prefix: prefix } = server;
+    if (!Number.isInteger(port)) {
+      violations.push(`registry.json ${pkg}: no integer \`port\``);
+    } else {
+      if (portOwner.has(port)) {
+        violations.push(
+          `registry.json: port ${port} is used by both ${portOwner.get(port)} and ${pkg}`
+        );
+      }
+      portOwner.set(port, pkg);
+      if (ports.has(pkg) && ports.get(pkg) !== port) {
+        violations.push(
+          `registry.json ${pkg}: port ${port}, but packages/${pkg}/src/config/index.ts defaults to ${ports.get(pkg)}`
+        );
+      }
     }
-    owner.set(port, pkg);
-    if (scriptPorts.has(pkg) && scriptPorts.get(pkg) !== port) {
+    if (typeof prefix !== "string" || !/^[a-z0-9_]+$/.test(prefix)) {
+      violations.push(`registry.json ${pkg}: \`tool_prefix\` must match /^[a-z0-9_]+$/`);
+      continue;
+    }
+    if (prefixOwner.has(prefix)) {
       violations.push(
-        `scripts/conformance-test.sh: get_port ${pkg} is ${scriptPorts.get(pkg)}, but the server defaults to ${port}`
+        `registry.json: tool_prefix "${prefix}" is used by both ${prefixOwner.get(prefix)} and ${pkg}`
+      );
+    }
+    prefixOwner.set(prefix, pkg);
+    const derived = server.tools?.length ? derivePrefix(server.tools) : null;
+    if (derived && derived !== prefix) {
+      violations.push(
+        `registry.json ${pkg}: tool_prefix "${prefix}", but its tools share "${derived}"`
+      );
+    }
+  }
+
+  // Derived files: still reading the registry, and no hand-written list again.
+  for (const { file, reads, scope = (t) => t } of DERIVED) {
+    const path = join(root, file);
+    if (!existsSync(path)) {
+      violations.push(`${file}: file not found (moved? update DERIVED)`);
+      continue;
+    }
+    const text = readFileSync(path, "utf8");
+    if (!text.includes(reads)) {
+      violations.push(`${file}: no longer reads the registry (expected "${reads}")`);
+    }
+    const lines = hardcodedServerLists(scope(text));
+    if (lines.length) {
+      violations.push(
+        `${file}: hardcoded server list at line(s) ${lines.join(", ")}; read it from registry.json (scripts/fleet.mjs) instead`
       );
     }
   }

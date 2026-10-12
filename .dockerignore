@@ -34,3 +34,6 @@ coverage
 **/coverage
 .vscode
 .idea
+
+# Cloud Build writes the fleet service list here (cloudbuild*.yaml)
+.fleet-services
