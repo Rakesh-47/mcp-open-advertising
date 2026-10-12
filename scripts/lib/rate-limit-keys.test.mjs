@@ -23,7 +23,7 @@ import {
   scanPackage,
 } from "./rate-limit-keys.mjs";
 
-const limiterModule = join(ROOT, "packages", "shared", "dist", "utils", "rate-limiter.js");
+const limiterModule = join(ROOT, "packages", "shared", "dist", "utils", "http", "rate-limiter.js");
 if (!existsSync(limiterModule)) {
   throw new Error(`${limiterModule} not found. Build @cesteral/shared before this suite.`);
 }

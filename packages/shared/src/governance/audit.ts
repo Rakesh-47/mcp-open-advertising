@@ -1,7 +1,7 @@
 // Copyright (c) Cesteral AB. Licensed under the Apache License, Version 2.0.
 // See LICENSE.md in the project root for full license terms.
 
-import { recordDecisionTokenVerification } from "../utils/metrics.js";
+import { recordDecisionTokenVerification } from "../utils/observability/metrics.js";
 import type { DecisionTokenVerdict } from "./decision-token.js";
 import type { TokenMode } from "./config.js";
 

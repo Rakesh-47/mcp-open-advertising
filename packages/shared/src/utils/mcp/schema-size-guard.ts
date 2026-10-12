@@ -12,7 +12,7 @@
  *
  * ```ts
  * import { describe, it } from "vitest";
- * import { allTools } from "../src/mcp-server/tools/definitions/index.js";
+ * import { allTools } from "../../src/mcp-server/tools/definitions/index.js";
  * import { assertSchemaSizesUnderLimit } from "@cesteral/shared";
  *
  * describe("schema size guard", () => {

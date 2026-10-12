@@ -17,19 +17,19 @@ import pino from "pino";
 import {
   buildOperationalEnvelope,
   FLEET_IDEMPOTENCY,
-} from "../../src/utils/operational-envelope.js";
-import { RateLimiter, createPlatformRateLimiter } from "../../src/utils/rate-limiter.js";
+} from "../../src/utils/transport/operational-envelope.js";
+import { RateLimiter, createPlatformRateLimiter } from "../../src/utils/http/rate-limiter.js";
 import {
   describeRetryPolicy,
   IDEMPOTENT_RETRY_METHODS,
   DEFAULT_MAX_RETRIES,
-} from "../../src/utils/retryable-fetch.js";
+} from "../../src/utils/http/retryable-fetch.js";
 import {
   createMcpHttpTransport,
   type TransportFactoryConfig,
   type TransportFactoryAppConfig,
-} from "../../src/utils/mcp-http-transport-factory.js";
-import { SessionServiceStore } from "../../src/utils/session-store.js";
+} from "../../src/utils/transport/mcp-http-transport-factory.js";
+import { SessionServiceStore } from "../../src/utils/transport/session-store.js";
 
 /** The shared default: 429 plus any 5xx. Not restated — this IS the default path. */
 const defaultEnvelope = () =>

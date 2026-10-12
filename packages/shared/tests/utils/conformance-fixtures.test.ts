@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { conformancePrompts } from "../../src/utils/conformance-fixtures.js";
-import { testElicitationSep1330EnumsTool } from "../../src/utils/conformance-echo-tool.js";
+import { conformancePrompts } from "../../src/utils/conformance/conformance-fixtures.js";
+import { testElicitationSep1330EnumsTool } from "../../src/utils/conformance/conformance-echo-tool.js";
 
 // These fixtures exist only to satisfy @modelcontextprotocol/conformance
 // scenarios, which call them with fixed names and inspect fixed fields. The

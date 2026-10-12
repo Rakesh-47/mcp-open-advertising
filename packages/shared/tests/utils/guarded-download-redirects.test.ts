@@ -11,7 +11,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   fetchGuardedDownload,
   MAX_GUARDED_DOWNLOAD_REDIRECTS,
-} from "../../src/utils/download-url-guard.js";
+} from "../../src/utils/http/download-url-guard.js";
 import { McpError } from "../../src/utils/mcp-errors.js";
 
 interface Sent {

@@ -31,8 +31,8 @@
  * ({@link PLATFORM_RATE_LIMIT_MAX_WAIT_MS}).
  */
 
-import { McpError, JsonRpcErrorCode } from "./mcp-errors.js";
-import { recordRateLimitHit } from "./metrics.js";
+import { McpError, JsonRpcErrorCode } from "../mcp-errors.js";
+import { recordRateLimitHit } from "../observability/metrics.js";
 
 const CLEANUP_INTERVAL_MS = 300_000;
 const TIMESTAMP_GC_AGE_MS = 3_600_000;

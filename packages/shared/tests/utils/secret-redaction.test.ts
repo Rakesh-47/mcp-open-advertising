@@ -27,7 +27,7 @@ import {
   redactSecretsInString,
   redactSecretsInText,
   redactUrl,
-} from "../../src/utils/secret-redaction.js";
+} from "../../src/utils/observability/secret-redaction.js";
 import { ErrorHandler } from "../../src/utils/mcp-errors.js";
 
 /** The four shapes the fleet's clients actually produce. */

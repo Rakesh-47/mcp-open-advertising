@@ -12,8 +12,8 @@ import pino from "pino";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { registerReportCsvResource } from "../../src/utils/report-csv-resource.js";
-import { ReportCsvStore } from "../../src/utils/report-csv-store.js";
+import { registerReportCsvResource } from "../../src/utils/reporting/report-csv-resource.js";
+import { ReportCsvStore } from "../../src/utils/reporting/report-csv-store.js";
 
 describe("report-csv:// over the SDK", () => {
   it("delivers the untrusted marker on the resource contents", async () => {

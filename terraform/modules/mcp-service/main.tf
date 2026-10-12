@@ -269,7 +269,7 @@ resource "google_cloud_run_v2_service" "mcp_server" {
       }
 
       # InteractionLogger destination override (optional).
-      # file | gcs | stdout — see packages/shared/src/utils/interaction-logger.ts
+      # file | gcs | stdout — see packages/shared/src/utils/observability/interaction-logger.ts
       dynamic "env" {
         for_each = length(var.interaction_log_mode) > 0 ? [1] : []
         content {

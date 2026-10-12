@@ -9,7 +9,7 @@
  */
 
 import { fetchGuardedDownload } from "./download-url-guard.js";
-import type { RequestContext } from "./request-context.js";
+import type { RequestContext } from "../observability/request-context.js";
 import path from "path";
 
 export interface DownloadedFile {

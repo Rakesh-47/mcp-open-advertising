@@ -2,7 +2,7 @@
 // See LICENSE.md in the project root for full license terms.
 
 import { fetchWithTimeout } from "./fetch-with-timeout.js";
-import type { RequestContext } from "./request-context.js";
+import type { RequestContext } from "../observability/request-context.js";
 import type { Readable } from "node:stream";
 
 /**

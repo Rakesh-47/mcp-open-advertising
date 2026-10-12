@@ -4,7 +4,7 @@ import {
   parseReportCsvUri,
   ReportCsvStore,
   REPORT_CSV_RESOURCE_SCHEME,
-} from "../../src/utils/report-csv-store.js";
+} from "../../src/utils/reporting/report-csv-store.js";
 
 function makeStore(
   opts: {

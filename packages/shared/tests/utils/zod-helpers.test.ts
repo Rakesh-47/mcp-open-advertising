@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { extractZodShape } from "../../src/utils/zod-helpers.js";
+import { extractZodShape } from "../../src/utils/mcp/zod-helpers.js";
 
 describe("extractZodShape", () => {
   it("returns the shape of a ZodObject", () => {

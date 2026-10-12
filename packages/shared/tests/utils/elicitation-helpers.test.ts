@@ -13,7 +13,7 @@ import {
   elicitDeleteConfirmation,
   hasSensitiveBulkField,
   type ElicitContext,
-} from "../../src/utils/elicitation-helpers.js";
+} from "../../src/utils/mcp/elicitation-helpers.js";
 
 function makeAcceptingContext(): { ctx: ElicitContext; calls: Record<string, unknown>[] } {
   const calls: Record<string, unknown>[] = [];

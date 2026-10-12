@@ -20,9 +20,9 @@ import {
   checkReadOnlyFieldsStructured,
   validateEntityResponseFormatter,
 } from "./client-validation-helpers.js";
-import type { RequestContext } from "./request-context.js";
+import type { RequestContext } from "../observability/request-context.js";
 import { NO_UNTRUSTED_CONTENT } from "./untrusted-content.js";
-import type { SdkContext } from "../types/tool-types.js";
+import type { SdkContext } from "../../types/tool-types.js";
 
 const ValidationIssueSchema = z.object({
   field: z.string(),

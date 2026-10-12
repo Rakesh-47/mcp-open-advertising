@@ -10,8 +10,8 @@
  * conformance-echo-tool.ts for tools.
  */
 
-import type { StaticResourceDefinition } from "./resource-handler-factory.js";
-import type { PromptDefinitionForFactory } from "./prompt-handler-factory.js";
+import type { StaticResourceDefinition } from "../mcp/resource-handler-factory.js";
+import type { PromptDefinitionForFactory } from "../mcp/prompt-handler-factory.js";
 
 // ---------------------------------------------------------------------------
 // Static resource — test://static-text

@@ -10,7 +10,7 @@
       "wrongPlatform": 7,
       "wrongOperation": 6,
       "unsafePicks": 2,
-      "note": "The deterministic control: the fleet's own shipped scorer (packages/shared/src/utils/tool-search.ts) pointed at the merged 314-tool catalog instead of one server's registry. Measured by running it, not estimated. This is the floor — 35% accuracy, and it calls a destructive tool on 2 of 3 requests that name no platform at all. Any model number is only meaningful against this. Re-measured 2026-09-24 after the ranker started splitting names into words and reading 'remove' as 'delete': the totals are unchanged (7/20 correct, 2 unsafe picks) and the same case ids fail. Some wrong picks changed; e.g. explicit-tiktok-delete now goes to msads_manage_ad_extensions instead of gads_adjust_bids."
+      "note": "The deterministic control: the fleet's own shipped scorer (packages/shared/src/utils/mcp/tool-search.ts) pointed at the merged 314-tool catalog instead of one server's registry. Measured by running it, not estimated. This is the floor — 35% accuracy, and it calls a destructive tool on 2 of 3 requests that name no platform at all. Any model number is only meaningful against this. Re-measured 2026-09-24 after the ranker started splitting names into words and reading 'remove' as 'delete': the totals are unchanged (7/20 correct, 2 unsafe picks) and the same case ids fail. Some wrong picks changed; e.g. explicit-tiktok-delete now goes to msads_manage_ad_extensions instead of gads_adjust_bids."
     }
   },
   "$unmeasured": {

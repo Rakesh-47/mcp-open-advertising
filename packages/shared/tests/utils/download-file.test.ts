@@ -2,7 +2,10 @@
 // See LICENSE.md in the project root for full license terms.
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { downloadFileToBuffer, ensureFilenameExtension } from "../../src/utils/download-file.js";
+import {
+  downloadFileToBuffer,
+  ensureFilenameExtension,
+} from "../../src/utils/http/download-file.js";
 
 afterEach(() => {
   vi.restoreAllMocks();

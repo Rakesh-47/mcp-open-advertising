@@ -75,7 +75,7 @@ import {
   setSpanAttribute,
   recordSpanError,
   createPlatformSpanHelper,
-} from "../../src/utils/telemetry.js";
+} from "../../src/utils/observability/telemetry.js";
 
 const mockSpan = __mockSpan as any;
 const mockTracer = __mockTracer as any;
@@ -249,7 +249,7 @@ describe("telemetry utilities", () => {
     it("selects GCP exporters when K_SERVICE env var is set", async () => {
       process.env.K_SERVICE = "dbm-mcp";
 
-      const { buildExporters } = await import("../../src/utils/telemetry.js");
+      const { buildExporters } = await import("../../src/utils/observability/telemetry.js");
       const { traceExporter, metricReader } = buildExporters({
         otelEnabled: true,
         otelServiceName: "test",
@@ -263,7 +263,7 @@ describe("telemetry utilities", () => {
 
     it("selects GCP exporters when gcpExporter: true is passed explicitly", async () => {
       // K_SERVICE not set — config override
-      const { buildExporters } = await import("../../src/utils/telemetry.js");
+      const { buildExporters } = await import("../../src/utils/observability/telemetry.js");
       const { traceExporter, metricReader } = buildExporters({
         otelEnabled: true,
         otelServiceName: "test",
@@ -277,7 +277,7 @@ describe("telemetry utilities", () => {
     });
 
     it("selects OTLP exporters when endpoints are configured and not on Cloud Run", async () => {
-      const { buildExporters } = await import("../../src/utils/telemetry.js");
+      const { buildExporters } = await import("../../src/utils/observability/telemetry.js");
       const { traceExporter, metricReader } = buildExporters({
         otelEnabled: true,
         otelServiceName: "test",
@@ -295,7 +295,7 @@ describe("telemetry utilities", () => {
     });
 
     it("returns undefined exporters when no Cloud Run and no OTLP endpoints", async () => {
-      const { buildExporters } = await import("../../src/utils/telemetry.js");
+      const { buildExporters } = await import("../../src/utils/observability/telemetry.js");
       const { traceExporter, metricReader } = buildExporters({
         otelEnabled: true,
         otelServiceName: "test",

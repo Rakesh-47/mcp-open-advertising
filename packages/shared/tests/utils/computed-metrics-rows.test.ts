@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   ComputedMetricsFlagSchema,
   appendComputedMetricsToRows,
-} from "../../src/utils/computed-metrics.js";
+} from "../../src/utils/reporting/computed-metrics.js";
 
 describe("ComputedMetricsFlagSchema", () => {
   it("defaults includeComputedMetrics to false", () => {

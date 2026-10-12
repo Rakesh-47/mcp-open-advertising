@@ -2,7 +2,7 @@
 // See LICENSE.md in the project root for full license terms.
 
 import { describe, it, expect, vi } from "vitest";
-import { executeBulkConcurrent } from "../../src/utils/bulk-executor.js";
+import { executeBulkConcurrent } from "../../src/utils/mcp/bulk-executor.js";
 
 describe("executeBulkConcurrent", () => {
   it("returns one BulkResult per input item, ordered by input index", async () => {

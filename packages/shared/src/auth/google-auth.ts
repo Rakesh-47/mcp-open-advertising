@@ -9,7 +9,7 @@
  * supplied by the end-user via HTTP headers at SSE connection time.
  */
 
-import { fetchWithTimeout } from "../utils/fetch-with-timeout.js";
+import { fetchWithTimeout } from "../utils/http/fetch-with-timeout.js";
 import { fingerprintCredentials } from "./fingerprint.js";
 
 // ---------------------------------------------------------------------------

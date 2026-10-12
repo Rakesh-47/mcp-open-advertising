@@ -10,12 +10,12 @@
  * These are lightweight, stateless tools that can be safely included in all servers.
  */
 import { z } from "zod";
-import type { ToolDefinitionForFactory, ToolSdkContext } from "./tool-handler-factory.js";
+import type { ToolDefinitionForFactory, ToolSdkContext } from "../mcp/tool-handler-factory.js";
 // Every conformance tool declares NO_UNTRUSTED_CONTENT: they echo the caller's
 // own arguments or elicitation answers, never platform text. Declared so a
 // server whose card claims per-response path reporting stays truthful with
 // MCP_INCLUDE_CONFORMANCE_TOOLS=true.
-import { NO_UNTRUSTED_CONTENT } from "./untrusted-content.js";
+import { NO_UNTRUSTED_CONTENT } from "../mcp/untrusted-content.js";
 
 // ---------------------------------------------------------------------------
 // echo — general connectivity test

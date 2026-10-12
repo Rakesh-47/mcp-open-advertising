@@ -10,9 +10,9 @@
 
 import pino from "pino";
 import type { Logger } from "pino";
-import { closeAllInteractionLoggers } from "./interaction-logger.js";
-import { shutdownOpenTelemetry } from "./telemetry.js";
-import { initializeGovernanceRuntime } from "../governance/runtime.js";
+import { closeAllInteractionLoggers } from "../observability/interaction-logger.js";
+import { shutdownOpenTelemetry } from "../observability/telemetry.js";
+import { initializeGovernanceRuntime } from "../../governance/runtime.js";
 
 // ---------------------------------------------------------------------------
 // Transport mode detection

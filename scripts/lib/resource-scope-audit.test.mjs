@@ -94,7 +94,7 @@ describe("resource definitions are documentation, not execution surfaces (#211 G
     // passing an `extra`/context argument to resource definitions, the reason
     // they are safe disappears and the guard above stops meaning anything.
     const factory = readFileSync(
-      join(ROOT, "packages/shared/src/utils/resource-handler-factory.ts"),
+      join(ROOT, "packages/shared/src/utils/mcp/resource-handler-factory.ts"),
       "utf-8"
     );
     expect(factory).toContain("handler: (uri: URL) => Promise<{");
@@ -109,7 +109,7 @@ describe("resource definitions are documentation, not execution surfaces (#211 G
     // it. Asserted here so the triage conclusion ("the tenant-scoped surface is
     // already guarded") cannot quietly stop being true.
     const src = readFileSync(
-      join(ROOT, "packages/shared/src/utils/report-csv-resource.ts"),
+      join(ROOT, "packages/shared/src/utils/reporting/report-csv-resource.ts"),
       "utf-8"
     );
     expect(src).toContain("extra?: { sessionId?: string }");

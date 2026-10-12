@@ -16,16 +16,16 @@
 
 import type { Logger } from "pino";
 import { z } from "zod";
-import { withToolSpan, setSpanAttribute, recordSpanError } from "./telemetry.js";
-import { remoteParentFromMeta } from "./trace-context.js";
-import { ErrorHandler, McpError } from "./mcp-errors.js";
-import { recordToolExecution } from "./metrics.js";
+import { withToolSpan, setSpanAttribute, recordSpanError } from "../observability/telemetry.js";
+import { remoteParentFromMeta } from "../observability/trace-context.js";
+import { ErrorHandler, McpError } from "../mcp-errors.js";
+import { recordToolExecution } from "../observability/metrics.js";
 import {
   type InteractionLogger,
   type InteractionLogEntry,
   sanitizeParams,
-} from "./interaction-logger.js";
-import { getRecordedUpstreamRequests } from "./http-request-recorder.js";
+} from "../observability/interaction-logger.js";
+import { getRecordedUpstreamRequests } from "../observability/http-request-recorder.js";
 import { getRawToolArgs, installRawToolArgsCapture } from "./raw-tool-args.js";
 import {
   TOOL_ERROR_UNTRUSTED_MARKER,
@@ -40,17 +40,17 @@ import {
   runWithRequestContext,
   getRequestContext,
   type RequestContext,
-} from "./request-context.js";
-import type { SessionAuthContext } from "../auth/auth-strategy.js";
-import { JsonRpcErrorCode } from "./mcp-errors.js";
+} from "../observability/request-context.js";
+import type { SessionAuthContext } from "../../auth/auth-strategy.js";
+import { JsonRpcErrorCode } from "../mcp-errors.js";
 import { canonicalizeExecutableArgs } from "@cesteral/contract-hash";
-import { resolveTokenMode } from "../governance/config.js";
-import { verifyDecisionToken } from "../governance/decision-token.js";
-import type { ManifestEntryRef } from "../governance/manifest-resolver.js";
-import { logDecisionTokenVerdict } from "../governance/audit.js";
-import { InMemoryJtiStore, type JtiStore } from "../governance/jti-store.js";
-import { getGovernanceJtiStore } from "../governance/runtime.js";
-import type { CesteralToolAnnotations } from "../types/cesteral-annotations.js";
+import { resolveTokenMode } from "../../governance/config.js";
+import { verifyDecisionToken } from "../../governance/decision-token.js";
+import type { ManifestEntryRef } from "../../governance/manifest-resolver.js";
+import { logDecisionTokenVerdict } from "../../governance/audit.js";
+import { InMemoryJtiStore, type JtiStore } from "../../governance/jti-store.js";
+import { getGovernanceJtiStore } from "../../governance/runtime.js";
+import type { CesteralToolAnnotations } from "../../types/cesteral-annotations.js";
 
 /** Default decision-token jti TTL (10 min) — must be ≥ the token's own TTL. */
 const DEFAULT_JTI_TTL_MS = 600_000;

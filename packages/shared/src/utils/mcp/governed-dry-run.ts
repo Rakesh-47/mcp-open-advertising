@@ -1,8 +1,8 @@
 // Copyright (c) Cesteral AB. Licensed under the Apache License, Version 2.0.
 // See LICENSE.md in the project root for full license terms.
 
-import { McpError, JsonRpcErrorCode } from "./mcp-errors.js";
-import type { DryRunResult, EffectDryRunResult } from "../types/dry-run-result.js";
+import { McpError, JsonRpcErrorCode } from "../mcp-errors.js";
+import type { DryRunResult, EffectDryRunResult } from "../../types/dry-run-result.js";
 
 /**
  * Enforce, at the point of return, that a dry-run result honors the

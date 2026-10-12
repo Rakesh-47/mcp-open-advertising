@@ -30,7 +30,7 @@ import {
   registerActiveSessionsGauge,
   recordAuthValidation,
   recordRateLimitHit,
-} from "../../src/utils/metrics.js";
+} from "../../src/utils/observability/metrics.js";
 
 const mockCounter = __mockCounter as any;
 const mockHistogram = __mockHistogram as any;

@@ -4,7 +4,7 @@ import {
   registerTemplatedResourcesFromDefinitions,
   type StaticResourceDefinition,
   type TemplatedResourceDefinition,
-} from "../../src/utils/resource-handler-factory.js";
+} from "../../src/utils/mcp/resource-handler-factory.js";
 import type { Logger } from "pino";
 
 function createMockServer() {

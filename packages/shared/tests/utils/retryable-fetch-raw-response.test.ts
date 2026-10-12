@@ -3,11 +3,11 @@
 
 import { describe, it, expect } from "vitest";
 import pino from "pino";
-import { executeWithRetry } from "../../src/utils/retryable-fetch.js";
-import type { FetchWithTimeoutFn, RetryConfig } from "../../src/utils/retryable-fetch.js";
+import { executeWithRetry } from "../../src/utils/http/retryable-fetch.js";
+import type { FetchWithTimeoutFn, RetryConfig } from "../../src/utils/http/retryable-fetch.js";
 import { McpError } from "../../src/utils/mcp-errors.js";
-import { runWithRequestContext } from "../../src/utils/request-context.js";
-import { getRecordedUpstreamRequests } from "../../src/utils/http-request-recorder.js";
+import { runWithRequestContext } from "../../src/utils/observability/request-context.js";
+import { getRecordedUpstreamRequests } from "../../src/utils/observability/http-request-recorder.js";
 
 /**
  * `rawResponse` exists for non-JSON bodies (cm360 report CSV downloads,

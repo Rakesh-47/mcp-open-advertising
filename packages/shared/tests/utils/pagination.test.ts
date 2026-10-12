@@ -10,7 +10,7 @@ import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   findPaginationConformanceViolations,
-} from "../../src/utils/pagination.js";
+} from "../../src/utils/mcp/pagination.js";
 
 describe("buildPaginationOutput", () => {
   it("returns hasMore=true with cursor when one is supplied", () => {

@@ -7,7 +7,7 @@ import {
   closeAllInteractionLoggers,
   generateEntryId,
   sanitizeParams,
-} from "../../src/utils/interaction-logger.js";
+} from "../../src/utils/observability/interaction-logger.js";
 
 // ---------------------------------------------------------------------------
 // GCS mock — maintained at module level so vi.mock hoisting works correctly
