@@ -139,8 +139,12 @@ steps:
         cd terraform
         # Deploy by immutable digest (resolved in push-images) rather than the
         # mutable :SHORT_SHA tag. Write the mcp_images map (keyed by package)
-        # from /workspace/digests as a var file. It is passed before the tfvars,
-        # matching the order the per-server -var flags had.
+        # from /workspace/digests as a var file, passed AFTER the tfvars:
+        # Terraform applies -var and -var-file in command-line order, the last
+        # value wins, and a map is replaced, not merged. The environment
+        # tfvars sets mcp_images (placeholders for hand runs and the drift
+        # check), so passed first, those placeholders replaced every digest.
+        # Same order as scripts/deploy.sh.
         IMAGES=/workspace/mcp-images.tfvars.json
         SEP=""
         printf '{"mcp_images":{' > "$IMAGES"
@@ -150,7 +154,7 @@ steps:
           SEP=","
         done
         printf '}}\n' >> "$IMAGES"
-        terraform plan -var-file="$IMAGES" -var-file=${_ENVIRONMENT}.tfvars -out=tfplan > /workspace/plan.log 2>&1 || { cat /workspace/plan.log; exit 1; }
+        terraform plan -var-file=${_ENVIRONMENT}.tfvars -var-file="$IMAGES" -out=tfplan > /workspace/plan.log 2>&1 || { cat /workspace/plan.log; exit 1; }
         cat /workspace/plan.log
         # Terraform only warns when a tfvars file sets an undeclared variable,
         # so a renamed variable would otherwise fall back to its default.
