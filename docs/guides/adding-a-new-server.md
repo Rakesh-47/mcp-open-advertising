@@ -74,7 +74,7 @@ Every server follows the same layered pattern. The shared package (`@cesteral/sh
 
 ## Prerequisites
 
-- **Node.js** 20+ (CI uses 22) and **pnpm 10** — the repo pins `packageManager: pnpm@10.34.1`; run `corepack enable` or prefix commands with `corepack pnpm`. An older global pnpm fails on the `engines` check.
+- **Node.js** 22+ and **pnpm 10** — the repo pins `packageManager: pnpm@10.34.1`; run `corepack enable` or prefix commands with `corepack pnpm`. An older global pnpm fails on the `engines` check.
 - Familiarity with **TypeScript**, **Zod**, and REST APIs
 - Platform API credentials (developer account, API keys/tokens)
 - Read the platform's API documentation to understand:
@@ -1669,7 +1669,7 @@ export default defineConfig({
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^20.17.6",
+    "@types/node": "^22.20.5",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^1.6.0"
