@@ -1,5 +1,7 @@
 # amazon-dsp-mcp 1.2.0 Commitment Testkit Implementation Plan
 
+> **Status (checked 2026-10-12):** Implemented (`packages/amazon-dsp-mcp/src/testkit/fixtures/commitment.ts`).
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Ship `@cesteral/amazon-dsp-mcp@1.2.0` with canonical state-transition fixtures for the v1 commitment surface so downstream `cesteral-intelligence` promotes `amazon_dsp_update_commitment` to attested trust on first publish.

@@ -1,6 +1,6 @@
 # Connector-side Governance: Decision Tokens + Full Write-Contract Coverage (§10 Item 5)
 
-**Status:** Design approved (brainstorming complete) — 2026-06-01
+**Status (checked 2026-10-12):** Implemented; the plan is `2026-06-01-connector-governance-decision-token.md`.
 **Repo:** `cesteral-mcp-servers` (the `mcp-open-advertising` connector fleet)
 **Companion repo:** `cesteral-governance-layer` / `cesteral-intelligence` (mints tokens, admits contracts)
 

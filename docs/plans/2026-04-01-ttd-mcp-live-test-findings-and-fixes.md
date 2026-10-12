@@ -1,5 +1,7 @@
 # TTD-MCP Live Test Findings & Fix Plan
 
+> **Status (checked 2026-10-12):** Implemented. The fix branch merged (`fix/ttd-mcp-live-test-bugs`, `cb06f279`). The live run recorded here is the evidence `packages/ttd-mcp/verification.json` cites.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Fix all bugs found during live testing of the 37 ttd-mcp tools against the production TTD API.

@@ -1,5 +1,7 @@
 # Reporting Consistency & Improvement Implementation Plan
 
+> **Status (checked 2026-10-12):** Implemented. The shared helpers are in `packages/shared/src/utils/` (`report-polling.ts`, `report-csv-store.ts`, `report-spill.ts`, and others).
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Eliminate reporting inconsistencies across 12 MCP servers by building shared infra, adopting it everywhere, adding per-server features (CSV resources, discovery, scheduling), and enabling GCS-backed CSV spill for large reports.
@@ -1314,5 +1316,5 @@ Expected: plan shows 1 resource to add, 1 lifecycle rule.
 
 - All Phase 1–4 exit criteria satisfied.
 - Grep confirms no duplicated polling/CSV/status logic outside `@cesteral/shared`.
-- Update [MEMORY.md](~/.claude/projects/-Users-daniel-thorner-GitHub-cesteral-mcp-servers/memory/MEMORY.md) index with a pointer to the delivered consistency work.
+- Update the personal Claude memory index with a pointer to the delivered consistency work.
 - Consider requesting code review via `superpowers:requesting-code-review`.

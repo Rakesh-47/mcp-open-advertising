@@ -1,7 +1,7 @@
 # Signed-Manifest Upstream Support — `@cesteral/contract-hash` + Release Workflow
 
 **Date:** 2026-05-20
-**Status:** Draft / design review
+**Status (checked 2026-10-12):** Implemented; the plan is `2026-05-20-signed-manifest-upstream-plan.md`.
 **Owner:** Daniel Thorner
 **Repo in scope:** `cesteral/mcp-open-advertising` (this repo). Governance-side
 work is tracked separately in `cesteral-intelligence`.

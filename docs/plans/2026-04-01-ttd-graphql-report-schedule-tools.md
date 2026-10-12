@@ -1,5 +1,7 @@
 # TTD GraphQL Report Schedule Tools Implementation Plan
 
+> **Status (checked 2026-10-12):** Implemented. The GraphQL schedule and template tools are in `packages/ttd-mcp/src/mcp-server/tools/definitions/`.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Add 5 new GraphQL-based report schedule tools that cover operations only available via the TTD GraphQL API, complementing the 4 existing REST-based schedule tools.

@@ -1,5 +1,7 @@
 # TTD Report Type Discovery Tools — Implementation Plan
 
+> **Status (checked 2026-10-12):** Implemented (`ttd_list_report_types`, `ttd_get_report_type_schema`; `1241e54f`).
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Fix false-positive response bugs in template mutation tools and add two report-type discovery tools that eliminate painful manual GraphQL schema exploration.

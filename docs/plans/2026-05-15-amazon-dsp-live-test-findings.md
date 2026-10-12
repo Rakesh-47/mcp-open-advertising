@@ -1,5 +1,7 @@
 # amazon-dsp-mcp Live Test Findings (2026-05-15)
 
+> **Status (checked 2026-10-12):** Point-in-time report (2026-05-15). It predates the #234 move to the Unified API, so the entity surface it exercised has changed. `packages/amazon-dsp-mcp/verification.json` cites it as evidence.
+
 Live verification of all 19 amazon-dsp-mcp tools against the production Amazon DSP API using the LwA refresh-token flow.
 
 **Profile:** `4471203570749106` (EU)

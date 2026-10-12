@@ -1,5 +1,7 @@
 # amazon-dsp-mcp 1.2.0 — Commitment Testkit Coverage
 
+> **Status (checked 2026-10-12):** Implemented (`packages/amazon-dsp-mcp/src/testkit/fixtures/commitment.ts`).
+
 **Date:** 2026-05-28
 **Package:** `@cesteral/amazon-dsp-mcp`
 **Target version:** `1.2.0` (repo tag `v1.4.0`)
