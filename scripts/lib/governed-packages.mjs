@@ -6,7 +6,7 @@
 // Each server in registry.json carries an explicit `governed` boolean. This is
 // the *intent*: whether the package is expected to ship a signed attestation
 // manifest (`dist/cesteral-manifest.json`) because it exposes governed write
-// tools. `scripts/generate-manifests.mjs` derives the *actual* governed-ness by
+// tools. `scripts/generate/generate-manifests.mjs` derives the *actual* governed-ness by
 // booting each server and counting tools with an `annotations.cesteral` block.
 //
 // The inspect-tarball guard (scripts/lib/inspect-tarball.mjs) already catches a

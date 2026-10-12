@@ -19,7 +19,7 @@ import {
   checkCodeRefs,
   assessFreshness,
   REFRESH_DAYS,
-} from "../check-platform-facts.mjs";
+} from "../check/check-platform-facts.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const ledger = JSON.parse(readFileSync(join(ROOT, "platform-facts.json"), "utf-8"));
@@ -415,7 +415,7 @@ describe("where the freshness half runs", () => {
 });
 
 describe("command line", () => {
-  const script = join(ROOT, "scripts", "check-platform-facts.mjs");
+  const script = join(ROOT, "scripts", "check", "check-platform-facts.mjs");
   const run = (...args) => spawnSync(process.execPath, [script, ...args], { encoding: "utf-8" });
 
   it("refuses --due-within without --freshness rather than running the structure check", () => {

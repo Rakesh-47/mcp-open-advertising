@@ -43,7 +43,7 @@
 //   - npm unreachable / any other error -> FAIL (fail closed).
 //
 // Wired as a release.yml step after Build and before Publish, beside the
-// contract-hash guard. Run locally: node scripts/check-contract-schema-published-parity.mjs
+// contract-hash guard. Run locally: node scripts/check/check-contract-schema-published-parity.mjs
 
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
@@ -56,7 +56,7 @@ import { resolve } from "node:path";
 const require = createRequire(import.meta.url);
 
 const PKG_NAME = "@cesteral/contract-schema";
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 /**
  * Compare two builds of the annotation schema. Pure — takes the already-imported

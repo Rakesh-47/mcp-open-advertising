@@ -6,7 +6,7 @@
  * Reads registry.json (rich metadata) + each package.json (mcpName, version, npm identifier)
  * and outputs server.json in the official MCP Registry schema format into each package directory.
  *
- * Usage: node scripts/generate-server-json.mjs [--check]
+ * Usage: node scripts/generate/generate-server-json.mjs [--check]
  *   --check   Validate existing server.json files match what would be generated (CI mode)
  */
 
@@ -15,10 +15,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..");
+const ROOT = join(__dirname, "..", "..");
 
-const SCHEMA_URL =
-  "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json";
+const SCHEMA_URL = "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json";
 
 function loadRegistry() {
   const registryPath = join(ROOT, "registry.json");
@@ -38,10 +37,7 @@ function buildServerJson(serverEntry, packageJson, registry) {
   // generation time with the package name so each server gets a unique
   // URL string in the MCP Registry. {host} stays as a deployment-time
   // variable that operators fill in when wiring up their own instance.
-  const remoteUrl = registry.remoteUrlTemplate.replace(
-    "{server}",
-    serverEntry.package
-  );
+  const remoteUrl = registry.remoteUrlTemplate.replace("{server}", serverEntry.package);
 
   const serverJson = {
     $schema: SCHEMA_URL,
@@ -96,12 +92,7 @@ function main() {
 
     const serverJson = buildServerJson(server, packageJson, registry);
     const output = JSON.stringify(serverJson, null, 2) + "\n";
-    const outputPath = join(
-      ROOT,
-      "packages",
-      server.package,
-      "server.json"
-    );
+    const outputPath = join(ROOT, "packages", server.package, "server.json");
 
     if (checkMode) {
       if (!existsSync(outputPath)) {
@@ -112,7 +103,7 @@ function main() {
       const existing = readFileSync(outputPath, "utf-8");
       if (existing !== output) {
         console.error(
-          `STALE: ${server.package}/server.json — run 'node scripts/generate-server-json.mjs' to regenerate`
+          `STALE: ${server.package}/server.json — run 'node scripts/generate/generate-server-json.mjs' to regenerate`
         );
         allMatch = false;
       }

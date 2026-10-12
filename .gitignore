@@ -60,7 +60,7 @@ service-account-key.json
 # untracked lock file and unpinned provider versions for everyone.
 # That matters beyond reproducibility: provider upgrades change resource
 # normalization and refresh behaviour, which is exactly the signal
-# scripts/check-terraform-drift.mjs classifies.
+# scripts/check/check-terraform-drift.mjs classifies.
 
 # Worktrees
 .worktrees/

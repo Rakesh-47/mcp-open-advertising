@@ -19,12 +19,12 @@
  *
  * Requires `pnpm run build` first (uses dist output of every package).
  *
- * Usage: node scripts/check-registry-runtime.mjs
+ * Usage: node scripts/check/check-registry-runtime.mjs
  */
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT, withServerClient } from "./lib/boot-server.mjs";
+import { ROOT, withServerClient } from "../lib/boot-server.mjs";
 
 const REGISTRY_PATH = join(ROOT, "registry.json");
 

@@ -6,10 +6,10 @@
  * against it. Without that check a caller can name account B while the session
  * is bound to account A and have the call (including writes) execute against A.
  *
- * The audit rule and rationale live in ./lib/account-scope-audit.mjs. This
+ * The audit rule and rationale live in ../lib/account-scope-audit.mjs. This
  * runner just collects the tool source files and reports violations.
  *
- * Usage: node scripts/check-account-scope.mjs
+ * Usage: node scripts/check/check-account-scope.mjs
  */
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
@@ -19,10 +19,10 @@ import {
   auditAccountScopeCoverage,
   auditSessionBoundScopeCoverage,
   extractSessionBoundKeys,
-} from "./lib/account-scope-audit.mjs";
+} from "../lib/account-scope-audit.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..");
+const ROOT = join(__dirname, "..", "..");
 const PACKAGES = join(ROOT, "packages");
 
 /**

@@ -141,7 +141,7 @@ describe("missingRefs", () => {
       {
         file: "package.json",
         context: "scripts.a",
-        token: "scripts/check-platform-facts.mjs",
+        token: "scripts/lib/script-path-references.mjs",
         bases: ["."],
       },
       {

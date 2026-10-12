@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   compareCanonicalizers,
   compareProtoPollutionVectors,
-} from "../check-contract-hash-published-parity.mjs";
+} from "../check/check-contract-hash-published-parity.mjs";
 
 /**
  * Unit tests for the pure comparison core of the release parity guard

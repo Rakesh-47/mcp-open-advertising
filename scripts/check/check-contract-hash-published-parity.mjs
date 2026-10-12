@@ -28,7 +28,7 @@
 //     environment must be able to reach the registry anyway to publish).
 //
 // Wired as a release.yml step after Build (needs packages/contract-hash/dist)
-// and before Publish. Run locally: node scripts/check-contract-hash-published-parity.mjs
+// and before Publish. Run locally: node scripts/check/check-contract-hash-published-parity.mjs
 
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -41,7 +41,7 @@ import { resolve } from "node:path";
 const require = createRequire(import.meta.url);
 
 const PKG_NAME = "@cesteral/contract-hash";
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 /**
  * Compare the two builds over the PROTOTYPE-KEY vectors specifically.
@@ -65,7 +65,9 @@ export function compareProtoPollutionVectors(workspace, published) {
   const vectors = workspace.CROSS_REPO_PROTO_POLLUTION_VECTORS;
 
   if (!vectors?.length) {
-    return ["workspace module exports no CROSS_REPO_PROTO_POLLUTION_VECTORS — cannot establish parity over prototype keys"];
+    return [
+      "workspace module exports no CROSS_REPO_PROTO_POLLUTION_VECTORS — cannot establish parity over prototype keys",
+    ];
   }
 
   // A published build that does not export these vectors predates the C1 fix.
@@ -167,9 +169,7 @@ export function compareCanonicalizers(workspace, published) {
   // that moved the workspace golden forward is exactly the drift this guards.
   const publishedGolden = published.CROSS_REPO_DEFINITION_HASH_GOLDEN;
   const workspaceGolden = workspace.CROSS_REPO_DEFINITION_HASH_GOLDEN;
-  if (
-    publishedGolden?.expectedDefinitionHash !== workspaceGolden?.expectedDefinitionHash
-  ) {
+  if (publishedGolden?.expectedDefinitionHash !== workspaceGolden?.expectedDefinitionHash) {
     mismatches.push(
       `published CROSS_REPO_DEFINITION_HASH_GOLDEN (${publishedGolden?.expectedDefinitionHash}) ` +
         `!= workspace golden (${workspaceGolden?.expectedDefinitionHash})`

@@ -58,7 +58,7 @@ In `<env>.tfvars`, set at minimum:
   digests it just pushed. Both pass their image file after `-var-file`,
   because Terraform lets the last value on the command line win. Keep the
   entries anyway: `mcp_images` has no default, and the daily drift check
-  (`scripts/check-terraform-drift.mjs`) and hand runs plan with the tfvars
+  (`scripts/check/check-terraform-drift.mjs`) and hand runs plan with the tfvars
   alone. The drift check therefore sees an image update on each service
   after a deploy; it tolerates updates, so this is not an alert.
 

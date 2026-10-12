@@ -13,7 +13,7 @@
  * focus on patterns and conventions. The README is the single doc-level
  * source of truth for tool counts.
  *
- * Usage: node scripts/check-doc-tool-counts.mjs
+ * Usage: node scripts/check/check-doc-tool-counts.mjs
  */
 
 import { readFileSync } from "node:fs";
@@ -21,7 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..");
+const ROOT = join(__dirname, "..", "..");
 
 const registry = JSON.parse(readFileSync(join(ROOT, "registry.json"), "utf-8"));
 const expectedCounts = new Map(registry.servers.map((s) => [s.package, s.tools.length]));

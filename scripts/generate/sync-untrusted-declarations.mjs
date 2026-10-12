@@ -10,8 +10,8 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { withServerClient, listRawTools, ROOT } from "./lib/boot-server.mjs";
-import { SNAPSHOT_PATH, declarationsOf } from "./lib/untrusted-declarations.mjs";
+import { withServerClient, listRawTools, ROOT } from "../lib/boot-server.mjs";
+import { SNAPSHOT_PATH, declarationsOf } from "../lib/untrusted-declarations.mjs";
 
 const registry = JSON.parse(readFileSync(join(ROOT, "registry.json"), "utf8"));
 const perResponse = readdirSync(join(ROOT, "packages"))

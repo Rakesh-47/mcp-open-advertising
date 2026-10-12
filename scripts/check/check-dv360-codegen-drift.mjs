@@ -34,7 +34,7 @@ import { spawnSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const GENERATED_DIR = "packages/dv360-mcp/src/generated/schemas";
 
 const EXIT_OK = 0;
