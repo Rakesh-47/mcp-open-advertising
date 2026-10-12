@@ -14,7 +14,7 @@ import { describe, it, expect, vi } from "vitest";
 import { z } from "zod";
 import pino from "pino";
 
-vi.mock("../../src/utils/telemetry.js", () => ({
+vi.mock("../../src/utils/observability/telemetry.js", () => ({
   withToolSpan: vi.fn().mockImplementation((_name, _input, fn) => fn({})),
   withSpan: vi.fn().mockImplementation((_name, fn) => fn()),
   setSpanAttribute: vi.fn(),
@@ -27,18 +27,18 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import {
   registerToolsFromDefinitions,
   type ToolDefinitionForFactory,
-} from "../../src/utils/tool-handler-factory.js";
-import { extractZodShape } from "../../src/utils/zod-helpers.js";
-import { NO_UNTRUSTED_CONTENT } from "../../src/utils/untrusted-content.js";
-import { buildServerCardExtras } from "../../src/utils/server-card-builder.js";
-import { conformanceTools } from "../../src/utils/conformance-echo-tool.js";
-import { createToolSearchTool } from "../../src/utils/tool-search.js";
-import { createValidateEntityTool } from "../../src/utils/validate-entity-factory.js";
+} from "../../src/utils/mcp/tool-handler-factory.js";
+import { extractZodShape } from "../../src/utils/mcp/zod-helpers.js";
+import { NO_UNTRUSTED_CONTENT } from "../../src/utils/mcp/untrusted-content.js";
+import { buildServerCardExtras } from "../../src/utils/transport/server-card-builder.js";
+import { conformanceTools } from "../../src/utils/conformance/conformance-echo-tool.js";
+import { createToolSearchTool } from "../../src/utils/mcp/tool-search.js";
+import { createValidateEntityTool } from "../../src/utils/mcp/validate-entity-factory.js";
 import {
   createMcpHttpTransport,
   type TransportFactoryConfig,
-} from "../../src/utils/mcp-http-transport-factory.js";
-import { SessionServiceStore } from "../../src/utils/session-store.js";
+} from "../../src/utils/transport/mcp-http-transport-factory.js";
+import { SessionServiceStore } from "../../src/utils/transport/session-store.js";
 import type { Logger } from "pino";
 
 const KEY = "cesteral/untrusted";

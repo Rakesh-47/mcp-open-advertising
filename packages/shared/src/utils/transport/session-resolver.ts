@@ -9,7 +9,7 @@
  */
 
 import { SessionServiceStore } from "./session-store.js";
-import { McpError, JsonRpcErrorCode } from "./mcp-errors.js";
+import { McpError, JsonRpcErrorCode } from "../mcp-errors.js";
 
 /** Minimal context shape — compatible with both per-package SdkContext and shared ToolSdkContext. */
 interface SessionContext {

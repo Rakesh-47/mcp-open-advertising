@@ -13,7 +13,7 @@
 
 import { timingSafeEqual } from "crypto";
 
-import type { SessionAuthContext } from "../auth/auth-strategy.js";
+import type { SessionAuthContext } from "../../auth/auth-strategy.js";
 
 const DEFAULT_MAX_SESSIONS = 1000;
 

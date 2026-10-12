@@ -5,7 +5,7 @@ import { existsSync, readFileSync, readdirSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import { describe, expect, it } from "vitest";
-import { SUPPORTED_PROTOCOL_VERSIONS } from "../../src/utils/mcp-transport-helpers.js";
+import { SUPPORTED_PROTOCOL_VERSIONS } from "../../src/utils/transport/mcp-transport-helpers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../../../..");

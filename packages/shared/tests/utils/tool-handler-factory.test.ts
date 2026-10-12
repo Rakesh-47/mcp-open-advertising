@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { z } from "zod";
 
 // Mock telemetry and metrics
-vi.mock("../../src/utils/telemetry.js", () => ({
+vi.mock("../../src/utils/observability/telemetry.js", () => ({
   withToolSpan: vi.fn().mockImplementation((_name, _input, fn) => fn({})),
   withSpan: vi.fn().mockImplementation((_name, fn) => fn()),
   setSpanAttribute: vi.fn(),
   recordSpanError: vi.fn(),
 }));
 
-vi.mock("../../src/utils/metrics.js", () => ({
+vi.mock("../../src/utils/observability/metrics.js", () => ({
   recordToolExecution: vi.fn(),
 }));
 
@@ -20,8 +20,8 @@ import {
   RESPONSE_CHARACTER_LIMIT,
   type ToolDefinitionForFactory,
   type ToolInputExample,
-} from "../../src/utils/tool-handler-factory.js";
-import { recordToolExecution } from "../../src/utils/metrics.js";
+} from "../../src/utils/mcp/tool-handler-factory.js";
+import { recordToolExecution } from "../../src/utils/observability/metrics.js";
 
 function createMockLogger() {
   return {
@@ -811,8 +811,12 @@ describe("registerToolsFromDefinitions - response truncation", () => {
 
 describe("registerToolsFromDefinitions — upstream failure capture (stdio)", () => {
   it("captures upstream HTTP records even when no outer ALS context is installed", async () => {
-    const { recordUpstreamRequest } = await import("../../src/utils/http-request-recorder.js");
-    const { InteractionLogger } = await import("../../src/utils/interaction-logger.js");
+    const { recordUpstreamRequest } = await import(
+      "../../src/utils/observability/http-request-recorder.js"
+    );
+    const { InteractionLogger } = await import(
+      "../../src/utils/observability/interaction-logger.js"
+    );
 
     const logger = createMockLogger();
     const server = createMockServer();
@@ -873,7 +877,9 @@ describe("registerToolsFromDefinitions — upstream failure capture (stdio)", ()
   });
 
   it("isolates recorder state between successive tool invocations", async () => {
-    const { recordUpstreamRequest } = await import("../../src/utils/http-request-recorder.js");
+    const { recordUpstreamRequest } = await import(
+      "../../src/utils/observability/http-request-recorder.js"
+    );
 
     const logger = createMockLogger();
     const server = createMockServer();

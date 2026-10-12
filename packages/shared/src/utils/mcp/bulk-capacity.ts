@@ -20,8 +20,8 @@
  * to admit as a single call is allowed to queue, and no longer.
  */
 
-import { McpError, JsonRpcErrorCode } from "./mcp-errors.js";
-import type { RateLimiter } from "./rate-limiter.js";
+import { McpError, JsonRpcErrorCode } from "../mcp-errors.js";
+import type { RateLimiter } from "../http/rate-limiter.js";
 
 export interface BulkCapacityBucket {
   /** The limiter key the items consume from, exactly as the service passes it to `consume`. */

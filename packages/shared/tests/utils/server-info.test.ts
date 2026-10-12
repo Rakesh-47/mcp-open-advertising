@@ -5,7 +5,10 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import { describe, expect, it } from "vitest";
-import { buildServerInfo, buildServerCardExtras } from "../../src/utils/server-card-builder.js";
+import {
+  buildServerInfo,
+  buildServerCardExtras,
+} from "../../src/utils/transport/server-card-builder.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const registry = JSON.parse(readFileSync(resolve(__dirname, "../../../../registry.json"), "utf8"));

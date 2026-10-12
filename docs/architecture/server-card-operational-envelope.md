@@ -2,7 +2,7 @@
 
 Reference for this subsystem. [CLAUDE.md](../../CLAUDE.md) keeps a short summary and links here.
 
-The card's `operational` block (#201) answers what a client needs before pointing a server at a live ad account: rate limit, retry semantics, which duplicate-write rails are covered, what is recorded, and what cannot be undone. `packages/shared/src/utils/operational-envelope.ts` builds it.
+The card's `operational` block (#201) answers what a client needs before pointing a server at a live ad account: rate limit, retry semantics, which duplicate-write rails are covered, what is recorded, and what cannot be undone. `packages/shared/src/utils/transport/operational-envelope.ts` builds it.
 
 **Everything mechanical is derived, not declared.** The rate limit is read off the live `RateLimiter` the transport was handed (`describeLimits()`); the retry policy comes from `describeRetryPolicy()`, which _executes_ the server's own `isRetryable` predicate over representative statuses and reads the live `IDEMPOTENT_RETRY_METHODS` set. A declared copy in `registry.json` was rejected for exactly the drift it would introduce — the fleet is not uniform here:
 

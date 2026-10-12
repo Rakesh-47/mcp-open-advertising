@@ -22,8 +22,8 @@ import { z } from "zod";
 import {
   registerToolsFromDefinitions,
   type ToolDefinitionForFactory,
-} from "../../src/utils/tool-handler-factory.js";
-import { createRequestContext } from "../../src/utils/request-context.js";
+} from "../../src/utils/mcp/tool-handler-factory.js";
+import { createRequestContext } from "../../src/utils/observability/request-context.js";
 import { McpError, JsonRpcErrorCode } from "../../src/utils/mcp-errors.js";
 
 const CANARY = "1//0eXaMpLeCaNaRyRefreshTokenValue";

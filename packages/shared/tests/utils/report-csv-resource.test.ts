@@ -3,8 +3,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 import pino from "pino";
-import { registerReportCsvResource } from "../../src/utils/report-csv-resource.js";
-import { ReportCsvStore } from "../../src/utils/report-csv-store.js";
+import { registerReportCsvResource } from "../../src/utils/reporting/report-csv-resource.js";
+import { ReportCsvStore } from "../../src/utils/reporting/report-csv-store.js";
 
 // Fake ResourceTemplate class that captures its ctor arguments so we can
 // replay the `list` callback in assertions without pulling in the SDK.

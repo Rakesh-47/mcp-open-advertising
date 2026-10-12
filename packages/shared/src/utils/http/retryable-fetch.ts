@@ -10,12 +10,16 @@
  */
 
 import type { Logger } from "pino";
-import { McpError, ErrorHandler, JsonRpcErrorCode } from "./mcp-errors.js";
+import { McpError, ErrorHandler, JsonRpcErrorCode } from "../mcp-errors.js";
 import { fetchWithTimeout } from "./fetch-with-timeout.js";
-import type { RequestContext } from "./request-context.js";
-import { setSpanAttribute } from "./telemetry.js";
-import { recordUpstreamRequest, redactHeaders, truncateBody } from "./http-request-recorder.js";
-import { redactSecretsInText, redactUrl } from "./secret-redaction.js";
+import type { RequestContext } from "../observability/request-context.js";
+import { setSpanAttribute } from "../observability/telemetry.js";
+import {
+  recordUpstreamRequest,
+  redactHeaders,
+  truncateBody,
+} from "../observability/http-request-recorder.js";
+import { redactSecretsInText, redactUrl } from "../observability/secret-redaction.js";
 
 // ---------------------------------------------------------------------------
 // Configuration

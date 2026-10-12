@@ -127,7 +127,7 @@ resource "google_storage_bucket" "gcs_persistence" {
 # whenever REPORT_SPILL_BUCKET is set and a downloaded report exceeds the
 # byte/row threshold. Objects are expected to be ephemeral — the
 # 1-day lifecycle rule is the primary cost control; per-session cleanup
-# hooks (packages/shared/src/utils/report-spill.ts#deleteSpilledObjectsForSession)
+# hooks (packages/shared/src/utils/reporting/report-spill.ts#deleteSpilledObjectsForSession)
 # best-effort delete objects sooner.
 resource "google_storage_bucket" "report_spill" {
   count    = var.enable_report_spill ? 1 : 0

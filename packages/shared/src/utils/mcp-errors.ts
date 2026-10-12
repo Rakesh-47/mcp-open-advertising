@@ -9,7 +9,7 @@
  */
 
 import type { Logger } from "pino";
-import { redactSecretsInText } from "./secret-redaction.js";
+import { redactSecretsInText } from "./observability/secret-redaction.js";
 
 // ---------------------------------------------------------------------------
 // JSON-RPC 2.0 Error Codes

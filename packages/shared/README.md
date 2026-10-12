@@ -29,6 +29,19 @@ const result = await strategy.verify(request.headers);
 
 ### Utilities (`/utils`)
 
+`src/utils/` is grouped by concern, and everything is re-exported from the package root, so import from `@cesteral/shared`, not from a folder:
+
+| Folder           | Holds                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `mcp/`           | Tool, prompt and resource factories, tool search, bulk helpers, pagination, untrusted-content marking       |
+| `transport/`     | HTTP transport, server bootstrap, server card, config, session store                                        |
+| `http/`          | Upstream fetch with retry, rate limiter, downloads, multipart                                               |
+| `observability/` | Logger, telemetry, metrics, request and trace context, interaction logger, secret redaction                 |
+| `reporting/`     | Report polling, view, CSV store and resource, spill, computed metrics, date presets                         |
+| `conformance/`   | Fixtures and tools registered only when `MCP_INCLUDE_CONFORMANCE_TOOLS` / `MCP_CONFORMANCE_FIXTURES` is set |
+
+The module tables below name files without their folder.
+
 #### Core Infrastructure
 
 | Module                          | Key Exports                                                         | Purpose                                                                   |

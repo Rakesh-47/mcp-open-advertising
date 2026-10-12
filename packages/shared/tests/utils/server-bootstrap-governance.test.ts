@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-import { bootstrapMcpServer } from "../../src/utils/server-bootstrap.js";
+import { bootstrapMcpServer } from "../../src/utils/transport/server-bootstrap.js";
 import { resetGovernanceRuntimeForTests } from "../../src/governance/runtime.js";
 
 /**

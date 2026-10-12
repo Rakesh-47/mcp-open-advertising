@@ -5,7 +5,7 @@
 // WHAT THIS IS
 //
 // Every server that ships a `{platform}_search_tools` tool ranks its own
-// registry with `packages/shared/src/utils/tool-search.ts`. That ranking is a
+// registry with `packages/shared/src/utils/mcp/tool-search.ts`. That ranking is a
 // pure function of tool NAME, TITLE and DESCRIPTION — text we hand-edit in
 // nearly every feature PR — and until now nothing asserted its outcome. A
 // one-word description tweak could reorder which tool a client lands on, and
@@ -47,7 +47,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withServerClient } from "../scripts/lib/boot-server.mjs";
-import { searchTools } from "../packages/shared/dist/utils/tool-search.js";
+import { searchTools } from "../packages/shared/dist/utils/mcp/tool-search.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const corpus = JSON.parse(readFileSync(join(ROOT, "evals", "tool-search-ranking.json"), "utf-8"));

@@ -19,7 +19,7 @@ import {
   installRawToolArgsCapture,
   getRawToolArgs,
   runWithRawToolArgs,
-} from "../../src/utils/raw-tool-args.js";
+} from "../../src/utils/mcp/raw-tool-args.js";
 
 async function connect(server: McpServer): Promise<Client> {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

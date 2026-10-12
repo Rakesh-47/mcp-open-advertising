@@ -2,7 +2,7 @@
 
 Reference for this subsystem. [CLAUDE.md](../../CLAUDE.md) keeps a short summary and links here.
 
-Every tool invocation is captured by `InteractionLogger` (`packages/shared/src/utils/interaction-logger.ts`). On failure, the entry adds the upstream HTTP trail (method, URL, status, redacted request/response bodies, per-attempt durations) recorded by `executeWithRetry` via `http-request-recorder.ts`.
+Every tool invocation is captured by `InteractionLogger` (`packages/shared/src/utils/observability/interaction-logger.ts`). On failure, the entry adds the upstream HTTP trail (method, URL, status, redacted request/response bodies, per-attempt durations) recorded by `executeWithRetry` via `http-request-recorder.ts`.
 
 Record shape (JSONL): `{ type: "tool_failure", ts, sessionId, requestId, tool, platform, params (redacted), errorCode, errorMessage, errorData, upstream: [{ method, url, status, attempt, durationMs, requestBodyRedacted, responseBodyRedacted, requestHeadersRedacted, responseHeadersRedacted }] }`
 

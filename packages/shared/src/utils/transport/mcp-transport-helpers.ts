@@ -11,7 +11,7 @@
 
 import { randomBytes } from "crypto";
 import type { Logger } from "pino";
-import type { AuthResult, AuthStrategy } from "../auth/auth-strategy.js";
+import type { AuthResult, AuthStrategy } from "../../auth/auth-strategy.js";
 
 // ---------------------------------------------------------------------------
 // Session ID validation

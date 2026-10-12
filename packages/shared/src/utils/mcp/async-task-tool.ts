@@ -20,7 +20,7 @@ import {
   toolListingMeta,
   type ToolUntrustedDeclaration,
 } from "./untrusted-content.js";
-import { redactSecretsInText } from "./secret-redaction.js";
+import { redactSecretsInText } from "../observability/secret-redaction.js";
 
 const DEFAULT_TASK_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_POLL_INTERVAL_MS = 3000;

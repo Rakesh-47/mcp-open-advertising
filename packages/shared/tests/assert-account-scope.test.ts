@@ -2,7 +2,7 @@
 // See LICENSE.md in the project root for full license terms.
 
 import { describe, it, expect } from "vitest";
-import { assertAccountScope } from "../src/utils/assert-account-scope.js";
+import { assertAccountScope } from "../src/utils/mcp/assert-account-scope.js";
 import { McpError, JsonRpcErrorCode } from "../src/utils/mcp-errors.js";
 
 describe("assertAccountScope", () => {

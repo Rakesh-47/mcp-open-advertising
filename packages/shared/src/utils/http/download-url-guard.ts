@@ -22,7 +22,7 @@
  * a private address (DNS rebinding) is not caught here.
  */
 
-import { McpError, JsonRpcErrorCode } from "./mcp-errors.js";
+import { McpError, JsonRpcErrorCode } from "../mcp-errors.js";
 import { fetchWithTimeout } from "./fetch-with-timeout.js";
 
 export interface DownloadUrlGuardOptions {

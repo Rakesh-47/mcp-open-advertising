@@ -41,8 +41,8 @@
  * CAN drift, so it is ratcheted by a test rather than trusted.
  */
 
-import type { RateLimiter } from "./rate-limiter.js";
-import { describeRetryPolicy, type ObservedRetryPolicy } from "./retryable-fetch.js";
+import type { RateLimiter } from "../http/rate-limiter.js";
+import { describeRetryPolicy, type ObservedRetryPolicy } from "../http/retryable-fetch.js";
 
 /** How this server's rate limiting actually behaves. */
 export interface OperationalRateLimit {

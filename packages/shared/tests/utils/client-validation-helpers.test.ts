@@ -7,7 +7,7 @@ import {
   checkReadOnlyFieldsStructured,
   validateEntityResponseFormatter,
   type ValidateEntityResult,
-} from "../../src/utils/client-validation-helpers.js";
+} from "../../src/utils/mcp/client-validation-helpers.js";
 
 // ---------------------------------------------------------------------------
 // checkType

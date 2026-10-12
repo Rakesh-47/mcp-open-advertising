@@ -4,8 +4,8 @@
 import type { Logger } from "pino";
 import { buildReportCsvUri, REPORT_CSV_RESOURCE_SCHEME } from "./report-csv-store.js";
 import type { ReportCsvStore } from "./report-csv-store.js";
-import { REPORT_CSV_UNTRUSTED_MARKER, untrustedResourceMeta } from "./untrusted-content.js";
-import { JsonRpcErrorCode, McpError } from "./mcp-errors.js";
+import { REPORT_CSV_UNTRUSTED_MARKER, untrustedResourceMeta } from "../mcp/untrusted-content.js";
+import { JsonRpcErrorCode, McpError } from "../mcp-errors.js";
 
 /**
  * Unknown, expired and other-session reads all answer the same -32602

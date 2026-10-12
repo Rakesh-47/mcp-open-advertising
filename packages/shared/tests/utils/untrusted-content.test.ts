@@ -21,7 +21,7 @@ import {
   untrustedResultMeta,
   untrustedResourceMeta,
   type UntrustedContentDeclaration,
-} from "../../src/utils/untrusted-content.js";
+} from "../../src/utils/mcp/untrusted-content.js";
 
 describe("UNTRUSTED_CONTENT_DECLARATION", () => {
   it("declares that third-party content is returned", () => {

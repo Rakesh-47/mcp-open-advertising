@@ -9,10 +9,10 @@
  */
 
 import type { z } from "zod";
-import type { RequestContext } from "../utils/request-context.js";
-import type { ToolInputExample } from "../utils/tool-handler-factory.js";
+import type { RequestContext } from "../utils/observability/request-context.js";
+import type { ToolInputExample } from "../utils/mcp/tool-handler-factory.js";
 import type { CesteralToolAnnotations } from "./cesteral-annotations.js";
-import type { ToolUntrustedDeclaration } from "../utils/untrusted-content.js";
+import type { ToolUntrustedDeclaration } from "../utils/mcp/untrusted-content.js";
 
 /**
  * Structural subset of ElicitResult from the MCP SDK.

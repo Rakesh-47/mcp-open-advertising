@@ -2,7 +2,7 @@
 // See LICENSE.md in the project root for full license terms.
 
 import { describe, expect, it } from "vitest";
-import { mapReportingError, ReportingError } from "../../src/utils/report-errors.js";
+import { mapReportingError, ReportingError } from "../../src/utils/reporting/report-errors.js";
 
 describe("mapReportingError", () => {
   it("wraps HTTP 429 as retryable", () => {

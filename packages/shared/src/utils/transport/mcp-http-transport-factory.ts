@@ -17,21 +17,24 @@ import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import type { Logger } from "pino";
-import { UNTRUSTED_CONTENT_DECLARATION, type UntrustedPathReporting } from "./untrusted-content.js";
+import {
+  UNTRUSTED_CONTENT_DECLARATION,
+  type UntrustedPathReporting,
+} from "../mcp/untrusted-content.js";
 import { buildOperationalEnvelope, type TerminalOperation } from "./operational-envelope.js";
-import { resolveInteractionLogMode } from "./interaction-logger.js";
-import type { RateLimiter } from "./rate-limiter.js";
+import { resolveInteractionLogMode } from "../observability/interaction-logger.js";
+import type { RateLimiter } from "../http/rate-limiter.js";
 
 import {
   createRequestContext,
   runWithRequestContext,
   extractRequestId,
-} from "./request-context.js";
+} from "../observability/request-context.js";
 import {
   registerActiveSessionsGauge,
   recordAuthValidation,
   recordSessionRehydration,
-} from "./metrics.js";
+} from "../observability/metrics.js";
 import {
   isValidSessionId,
   generateSessionId,
@@ -47,7 +50,7 @@ import {
   wwwAuthenticateChallenge,
   SessionManager,
 } from "./mcp-transport-helpers.js";
-import type { AuthStrategy, AuthResult, SessionAuthContext } from "../auth/auth-strategy.js";
+import type { AuthStrategy, AuthResult, SessionAuthContext } from "../../auth/auth-strategy.js";
 import type { SessionServiceStoreLike } from "./mcp-transport-helpers.js";
 import { buildDeploymentIdentity } from "./deployment-identity.js";
 

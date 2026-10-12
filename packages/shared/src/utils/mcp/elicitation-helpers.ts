@@ -7,7 +7,7 @@
  * handling, and the `MCP_ELICIT_DESTRUCTIVE` env knob stay uniform.
  */
 
-import { createLogger } from "./logger.js";
+import { createLogger } from "../observability/logger.js";
 
 const logger = createLogger("elicitation-helpers");
 

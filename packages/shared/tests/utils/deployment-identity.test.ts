@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   buildDeploymentIdentity,
   __resetDeploymentIdentityCacheForTest,
-} from "../../src/utils/deployment-identity.js";
+} from "../../src/utils/transport/deployment-identity.js";
 
 const AUD = "https://meta-mcp-abc.run.app";
 const SA = "meta-mcp-runtime@proj.iam.gserviceaccount.com";

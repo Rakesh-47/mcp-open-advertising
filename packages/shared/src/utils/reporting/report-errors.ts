@@ -1,7 +1,7 @@
 // Copyright (c) Cesteral AB. Licensed under the Apache License, Version 2.0.
 // See LICENSE.md in the project root for full license terms.
 
-import { JsonRpcErrorCode, McpError } from "./mcp-errors.js";
+import { JsonRpcErrorCode, McpError } from "../mcp-errors.js";
 
 /** Platforms whose reporting errors are normalized through {@link mapReportingError}. */
 export type ReportingPlatform =

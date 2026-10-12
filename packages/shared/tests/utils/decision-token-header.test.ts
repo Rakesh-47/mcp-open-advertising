@@ -7,7 +7,7 @@ import {
   createRequestContext,
   runWithRequestContext,
   getRequestContext,
-} from "../../src/utils/request-context.js";
+} from "../../src/utils/observability/request-context.js";
 
 /**
  * Locks the header wiring the streamable-HTTP transport relies on: the governance

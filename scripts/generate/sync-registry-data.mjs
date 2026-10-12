@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Generates packages/shared/src/utils/registry-data.generated.ts from registry.json.
+ * Generates packages/shared/src/utils/transport/registry-data.generated.ts from registry.json.
  *
  * The generated module bundles registry metadata into @cesteral/shared so
  * runtime code (server-card endpoint, CLI, etc.) can derive title and
@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
 const REGISTRY_PATH = join(ROOT, "registry.json");
-const OUT_PATH = join(ROOT, "packages/shared/src/utils/registry-data.generated.ts");
+const OUT_PATH = join(ROOT, "packages/shared/src/utils/transport/registry-data.generated.ts");
 
 const registry = JSON.parse(readFileSync(REGISTRY_PATH, "utf-8"));
 

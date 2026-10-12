@@ -7,7 +7,7 @@ import {
   ReportAbortedError,
   ReportFailedError,
   ReportTimeoutError,
-} from "../../src/utils/report-polling.js";
+} from "../../src/utils/reporting/report-polling.js";
 
 describe("pollUntilComplete", () => {
   it("resolves when isComplete returns true", async () => {

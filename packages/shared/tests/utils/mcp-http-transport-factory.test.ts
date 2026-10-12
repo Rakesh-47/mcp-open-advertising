@@ -27,8 +27,8 @@ import {
   createMcpHttpTransport,
   type TransportFactoryConfig,
   type TransportFactoryAppConfig,
-} from "../../src/utils/mcp-http-transport-factory.js";
-import { SessionServiceStore } from "../../src/utils/session-store.js";
+} from "../../src/utils/transport/mcp-http-transport-factory.js";
+import { SessionServiceStore } from "../../src/utils/transport/session-store.js";
 import type { AuthStrategy, AuthResult } from "../../src/auth/auth-strategy.js";
 
 // 64 hex chars — matches the isValidSessionId pattern /^[a-f0-9-]{20,100}$/i.
