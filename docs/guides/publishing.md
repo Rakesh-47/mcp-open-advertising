@@ -191,6 +191,8 @@ The **routine release path is now the tag-triggered `.github/workflows/release.y
 5. **Tag the release** — push a `vX.Y.Z` git tag; `release.yml` picks it up and runs the rest of the pipeline.
 6. **Smoke-test hosted:** `./scripts/deploy.sh dev` → verify → `./scripts/deploy.sh prod` → `./scripts/smoke-test.sh prod`
 
+Release notes need no manual step: `release.yml` creates the GitHub Release with `--generate-notes`, built from the merged PR titles since the previous tag. The repo has no `CHANGELOG.md` to update.
+
 `./scripts/publish-all.sh` remains supported as a manual **break-glass** fallback — a manual run still generates manifests, but only a CI run from `release.yml` produces npm provenance attestations. When running it by hand: refresh auth first (`npm whoami` resolves, `mcp-publisher login github` run recently — its JWT is ~10 min), then `./scripts/publish-all.sh` (npm → MCP Registry). The script's pack-and-inspect gate validates every tarball before any publish; conflict-regex tolerance makes re-runs idempotent if anything partial lands.
 
 The tag-triggered `release.yml` run (npm + MCP Registry publish) and the manual hosted deploy are independent — an operator does not need to wait for `release.yml` to finish before running `./scripts/deploy.sh`.
