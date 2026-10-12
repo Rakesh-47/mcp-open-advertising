@@ -5,20 +5,23 @@ project_id  = "YOUR_GCP_PROJECT_DEV"
 region      = "europe-west2"
 environment = "dev"
 
-# Container images (update after first build)
-dbm_mcp_image        = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/dbm-mcp:latest"
-dv360_mcp_image      = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/dv360-mcp:latest"
-ttd_mcp_image        = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/ttd-mcp:latest"
-gads_mcp_image       = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/gads-mcp:latest"
-meta_mcp_image       = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/meta-mcp:latest"
-linkedin_mcp_image   = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/linkedin-mcp:latest"
-tiktok_mcp_image     = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/tiktok-mcp:latest"
-cm360_mcp_image      = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/cm360-mcp:latest"
-sa360_mcp_image      = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/sa360-mcp:latest"
-pinterest_mcp_image  = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/pinterest-mcp:latest"
-snapchat_mcp_image   = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/snapchat-mcp:latest"
-amazon_dsp_mcp_image = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/amazon-dsp-mcp:latest"
-msads_mcp_image      = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/msads-mcp:latest"
+# Container images, keyed by package (scripts/deploy.sh and Cloud Build pass
+# the real ones; these are placeholders)
+mcp_images = {
+  "dbm-mcp"        = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/dbm-mcp:latest"
+  "dv360-mcp"      = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/dv360-mcp:latest"
+  "ttd-mcp"        = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/ttd-mcp:latest"
+  "gads-mcp"       = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/gads-mcp:latest"
+  "meta-mcp"       = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/meta-mcp:latest"
+  "linkedin-mcp"   = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/linkedin-mcp:latest"
+  "tiktok-mcp"     = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/tiktok-mcp:latest"
+  "cm360-mcp"      = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/cm360-mcp:latest"
+  "snapchat-mcp"   = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/snapchat-mcp:latest"
+  "sa360-mcp"      = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/sa360-mcp:latest"
+  "pinterest-mcp"  = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/pinterest-mcp:latest"
+  "amazon-dsp-mcp" = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/amazon-dsp-mcp:latest"
+  "msads-mcp"      = "europe-west2-docker.pkg.dev/YOUR_GCP_PROJECT_DEV/cesteral/msads-mcp:latest"
+}
 
 # Networking
 create_vpc             = true
@@ -58,8 +61,8 @@ allow_unauthenticated = false # Cloud Run IAM required; the governance app prese
 authorized_invokers = ["serviceAccount:governance-invoker@cesteral-governance.iam.gserviceaccount.com"]
 
 # MCP Server configuration
-log_level              = "debug" # More verbose logging in dev
-governance_token_mode  = "warn"  # off | warn | enforce — verify+log decision tokens without blocking
+log_level             = "debug" # More verbose logging in dev
+governance_token_mode = "warn"  # off | warn | enforce — verify+log decision tokens without blocking
 # Shared decision-token signing secret (verify side). The secret container is
 # provisioned out-of-band (shared with the governance layer's mint side) and
 # must already hold a version before apply — the name here must match it.

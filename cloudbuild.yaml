@@ -138,17 +138,26 @@ steps:
       - |
         cd terraform
         # Deploy by immutable digest (resolved in push-images) rather than the
-        # mutable :SHORT_SHA tag. Build the -var args from /workspace/digests so
-        # the Terraform var name (e.g. dbm_mcp_image) stays in sync with the
-        # service list automatically.
-        set --
+        # mutable :SHORT_SHA tag. Write the mcp_images map (keyed by package)
+        # from /workspace/digests as a var file. It is passed before the tfvars,
+        # matching the order the per-server -var flags had.
+        IMAGES=/workspace/mcp-images.tfvars.json
+        SEP=""
+        printf '{"mcp_images":{' > "$IMAGES"
         for SERVICE in $(cat /workspace/.fleet-services); do
           DIGEST=$(cat "/workspace/digests/${SERVICE}")
-          VARNAME=$(echo "$SERVICE" | tr '-' '_')_image
-          IMAGE_REF="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}@${DIGEST}"
-          set -- "$@" -var="${VARNAME}=${IMAGE_REF}"
+          printf '%s"%s":"%s"' "$SEP" "$SERVICE" "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}@${DIGEST}" >> "$IMAGES"
+          SEP=","
         done
-        terraform plan "$@" -var-file=${_ENVIRONMENT}.tfvars -out=tfplan
+        printf '}}\n' >> "$IMAGES"
+        terraform plan -var-file="$IMAGES" -var-file=${_ENVIRONMENT}.tfvars -out=tfplan > /workspace/plan.log 2>&1 || { cat /workspace/plan.log; exit 1; }
+        cat /workspace/plan.log
+        # Terraform only warns when a tfvars file sets an undeclared variable,
+        # so a renamed variable would otherwise fall back to its default.
+        if grep -q 'undeclared variable' /workspace/plan.log; then
+          echo "${_ENVIRONMENT}.tfvars sets variables Terraform does not declare (see the warning above)." >&2
+          exit 1
+        fi
     id: 'terraform-plan'
     waitFor: ['terraform-validate', 'tflint']
 

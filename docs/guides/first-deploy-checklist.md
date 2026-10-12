@@ -52,7 +52,7 @@ In `<env>.tfvars`, set at minimum:
   must already have a **version** (a `secret_key_ref` to an empty secret
   fails revision deploys). Dev-first: leave this commented in prod until the
   prod value is set.
-- The `*_mcp_image` variables in the example are placeholders — `deploy.sh`
+- The `mcp_images` entries in the example are placeholders — `deploy.sh`
   overrides them per run with the SHA it just built, so their tfvars values
   are only used when running terraform by hand.
 
