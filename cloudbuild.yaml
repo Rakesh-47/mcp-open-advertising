@@ -21,6 +21,9 @@ steps:
     args:
       - '-c'
       - |
+        # The fleet's service list, from registry.json, for the later steps
+        # (their images have no node).
+        node scripts/fleet.mjs servers > /workspace/.fleet-services || exit 1
         npm install -g pnpm@10.34.1
         pnpm install --frozen-lockfile
         pnpm run check:registry
@@ -36,7 +39,8 @@ steps:
       - '-c'
       - |
         set -eu
-        SERVICES="dbm-mcp dv360-mcp ttd-mcp gads-mcp meta-mcp linkedin-mcp tiktok-mcp cm360-mcp sa360-mcp pinterest-mcp snapchat-mcp amazon-dsp-mcp msads-mcp"
+        SERVICES="$(cat /workspace/.fleet-services)"
+        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
         for SERVICE in $SERVICES; do
           docker build \
             -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}:${SHORT_SHA}" \
@@ -54,7 +58,8 @@ steps:
       - '-c'
       - |
         set -eu
-        SERVICES="dbm-mcp dv360-mcp ttd-mcp gads-mcp meta-mcp linkedin-mcp tiktok-mcp cm360-mcp sa360-mcp pinterest-mcp snapchat-mcp amazon-dsp-mcp msads-mcp"
+        SERVICES="$(cat /workspace/.fleet-services)"
+        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
         for SERVICE in $SERVICES; do
           trivy image \
             --severity HIGH,CRITICAL \
@@ -73,7 +78,8 @@ steps:
       - '-c'
       - |
         set -eu
-        SERVICES="dbm-mcp dv360-mcp ttd-mcp gads-mcp meta-mcp linkedin-mcp tiktok-mcp cm360-mcp sa360-mcp pinterest-mcp snapchat-mcp amazon-dsp-mcp msads-mcp"
+        SERVICES="$(cat /workspace/.fleet-services)"
+        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
         for SERVICE in $SERVICES; do
           docker push --all-tags "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}" &
         done
@@ -136,7 +142,7 @@ steps:
         # the Terraform var name (e.g. dbm_mcp_image) stays in sync with the
         # service list automatically.
         set --
-        for SERVICE in dbm-mcp dv360-mcp ttd-mcp gads-mcp meta-mcp linkedin-mcp tiktok-mcp cm360-mcp sa360-mcp pinterest-mcp snapchat-mcp amazon-dsp-mcp msads-mcp; do
+        for SERVICE in $(cat /workspace/.fleet-services); do
           DIGEST=$(cat "/workspace/digests/${SERVICE}")
           VARNAME=$(echo "$SERVICE" | tr '-' '_')_image
           IMAGE_REF="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}@${DIGEST}"
@@ -175,7 +181,8 @@ steps:
       - |
         set -euo pipefail
         FAILED_SERVICES=""
-        SERVICES="dbm-mcp dv360-mcp ttd-mcp gads-mcp meta-mcp linkedin-mcp tiktok-mcp cm360-mcp sa360-mcp pinterest-mcp snapchat-mcp amazon-dsp-mcp msads-mcp"
+        SERVICES="$(cat /workspace/.fleet-services)"
+        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
         for SERVICE in $SERVICES; do
           HEALTHY=false
           URL=$(gcloud run services describe "$SERVICE" \
@@ -214,6 +221,9 @@ steps:
     id: 'health-check'
     waitFor: ['terraform-apply']
 
+# Static: Cloud Build's images: field cannot read registry.json, so this list
+# is hand-maintained. scripts/lib/fleet-inventory.test.mjs fails if it drifts
+# from the registry.
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/dbm-mcp:${SHORT_SHA}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/dbm-mcp:${_ENVIRONMENT}-latest'

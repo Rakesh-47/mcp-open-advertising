@@ -15,24 +15,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 RESULTS_DIR="$ROOT_DIR/.conformance-results"
 
-# Server → port mapping (bash 3.x compatible)
+# Server → port, from registry.json (the port must equal the server's config
+# default; scripts/lib/fleet-inventory.test.mjs checks that).
 get_port() {
-  case "$1" in
-    dbm-mcp)   echo 3001 ;;
-    dv360-mcp) echo 3002 ;;
-    ttd-mcp)   echo 3003 ;;
-    gads-mcp)  echo 3004 ;;
-    meta-mcp)  echo 3005 ;;
-    linkedin-mcp) echo 3006 ;;
-    tiktok-mcp) echo 3007 ;;
-    cm360-mcp) echo 3008 ;;
-    snapchat-mcp) echo 3009 ;;
-    sa360-mcp) echo 3010 ;;
-    pinterest-mcp) echo 3011 ;;
-    amazon-dsp-mcp) echo 3012 ;;
-    msads-mcp) echo 3013 ;;
-    *) echo "Unknown server: $1" >&2; exit 1 ;;
-  esac
+  node "$ROOT_DIR/scripts/fleet.mjs" port "$1"
 }
 
 # Scenarios applicable to all Cesteral servers. Everything else in the active
@@ -64,7 +50,9 @@ done
 if [ -n "$TARGET_SERVER" ] && [ "$TARGET_SERVER" != "--ci" ]; then
   SERVERS=("$TARGET_SERVER")
 else
-  SERVERS=("dbm-mcp" "dv360-mcp" "ttd-mcp" "gads-mcp" "meta-mcp" "linkedin-mcp" "tiktok-mcp" "cm360-mcp" "snapchat-mcp" "sa360-mcp" "pinterest-mcp" "amazon-dsp-mcp" "msads-mcp")
+  SERVER_LIST="$(node "$ROOT_DIR/scripts/fleet.mjs" servers)"
+  # shellcheck disable=SC2206 # package names contain no spaces or globs
+  SERVERS=($SERVER_LIST)
 fi
 
 # Clean results
@@ -91,10 +79,7 @@ for SERVER in "${SERVERS[@]}"; do
   cd "$ROOT_DIR"
   MCP_INCLUDE_CONFORMANCE_TOOLS=true MCP_CONFORMANCE_FIXTURES=true \
     MCP_AUTH_MODE=none MCP_TRANSPORT_MODE=http PORT="$PORT" \
-    LINKEDIN_MCP_PORT="$PORT" TIKTOK_MCP_PORT="$PORT" \
-    CM360_MCP_PORT="$PORT" SNAPCHAT_MCP_PORT="$PORT" \
-    SA360_MCP_PORT="$PORT" PINTEREST_MCP_PORT="$PORT" \
-    AMAZON_DSP_MCP_PORT="$PORT" MSADS_MCP_PORT="$PORT" \
+    env "$(echo "$SERVER" | tr 'a-z-' 'A-Z_')_PORT=$PORT" \
     node "packages/$SERVER/dist/index.js" &
   SERVER_PID=$!
 

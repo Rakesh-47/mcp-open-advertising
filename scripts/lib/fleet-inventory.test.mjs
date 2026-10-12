@@ -5,11 +5,15 @@
 
 import { describe, expect, it } from "vitest";
 import { ROOT } from "./boot-server.mjs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   CENSUS,
+  DERIVED,
   INVENTORY_SITES,
   censusShortfalls,
   checkFleetInventory,
+  hardcodedServerLists,
   mentionCount,
   readRegistry,
   serverTokens,
@@ -25,7 +29,14 @@ describe("fleet inventory", () => {
   it("no site is vacuous: an extra registry server is reported missing from every list", () => {
     const registry = readRegistry(ROOT);
     const template = registry.servers[0];
-    const fake = { ...template, package: "zzfake-mcp", auth: { modes: ["zzfake-bearer"] } };
+    const fake = {
+      ...template,
+      package: "zzfake-mcp",
+      port: 3999,
+      tool_prefix: "zzfake",
+      tools: [],
+      auth: { modes: ["zzfake-bearer"] },
+    };
     const violations = checkFleetInventory(ROOT, {
       ...registry,
       servers: [...registry.servers, fake],
@@ -46,6 +57,27 @@ describe("fleet inventory", () => {
         violations.some((v) => v.startsWith(`${file}: mentions zzfake-mcp on 0 line(s)`)),
         `${file} census never reported zzfake-mcp`
       ).toBe(true);
+    }
+  });
+
+  it("registry port and tool_prefix must agree with the code", () => {
+    const registry = readRegistry(ROOT);
+    const servers = registry.servers.map((s) =>
+      s.package === "msads-mcp" ? { ...s, port: 3001, tool_prefix: "microsoft" } : s
+    );
+    const violations = checkFleetInventory(ROOT, { ...registry, servers });
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        "registry.json: port 3001 is used by both dbm-mcp and msads-mcp",
+        "registry.json msads-mcp: port 3001, but packages/msads-mcp/src/config/index.ts defaults to 3013",
+        'registry.json msads-mcp: tool_prefix "microsoft", but its tools share "msads"',
+      ])
+    );
+  });
+
+  it("every derived file still reads the registry", () => {
+    for (const { file, reads } of DERIVED) {
+      expect(readFileSync(join(ROOT, file), "utf8"), file).toContain(reads);
     }
   });
 
@@ -93,34 +125,46 @@ describe("serverTokens", () => {
   });
 });
 
+describe("hardcodedServerLists", () => {
+  it("flags a one-line list and a vertical list, not single mentions", () => {
+    const text = [
+      "# Usage: ./dev.sh dbm-mcp", // 1: one mention, fine
+      'SERVICES="dbm-mcp ttd-mcp"', // 2: one-line list
+      "",
+      "SERVERS=(",
+      "  dbm-mcp", // 5: start of a vertical list
+      "  ttd-mcp",
+      "  meta-mcp",
+      ")",
+      'echo "deploying dbm-mcp"', // 9: lone mention
+    ].join("\n");
+    expect(hardcodedServerLists(text)).toEqual([2, 5]);
+  });
+
+  it("finds nothing in a file that reads the registry", () => {
+    expect(
+      hardcodedServerLists(
+        'SERVER_LIST="$(node scripts/fleet.mjs servers)"\nSERVERS=($SERVER_LIST)'
+      )
+    ).toEqual([]);
+  });
+});
+
 describe("site extractors", () => {
   const site = (file) => INVENTORY_SITES.find((s) => s.file === file);
 
-  it('conformance: ignores the single-server SERVERS=("$TARGET_SERVER") branch', () => {
+  it("cloudbuild: only the static images: entries are a site", () => {
     const text = [
-      'get_port() {\n  case "$1" in\n    dbm-mcp)   echo 3001 ;;\n  esac\n}',
-      '  SERVERS=("$TARGET_SERVER")',
-      '  SERVERS=("dbm-mcp" "ttd-mcp")',
-    ].join("\n");
-    expect(site("scripts/conformance-test.sh").lists(text)).toEqual([
-      { where: "default SERVERS", names: ["dbm-mcp", "ttd-mcp"] },
-      { where: "get_port case arms", names: ["dbm-mcp"] },
-    ]);
-  });
-
-  it("cloudbuild: FAILED_SERVICES is not a server list", () => {
-    const text = [
-      'FAILED_SERVICES=""',
-      'SERVICES="dbm-mcp ttd-mcp"',
-      'FAILED_SERVICES="$FAILED_SERVICES $SERVICE"',
+      'SERVICES="$(cat /workspace/.fleet-services)"',
       "images:",
       "  - 'r/dbm-mcp:${SHORT_SHA}'",
       "  - 'r/dbm-mcp:${_ENVIRONMENT}-latest'",
     ].join("\n");
-    const lists = site("cloudbuild.yaml").lists(text);
-    expect(lists.filter((l) => l.where.startsWith("SERVICES="))).toEqual([
-      { where: "SERVICES= list #1", names: ["dbm-mcp", "ttd-mcp"] },
-    ]);
+    expect(
+      site("cloudbuild.yaml")
+        .lists(text)
+        .map((l) => l.names)
+    ).toEqual([["dbm-mcp"], ["dbm-mcp"]]);
   });
 
   it("platform-mapping: planned rows do not count as current", () => {

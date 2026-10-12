@@ -47,21 +47,12 @@ esac
 REGION="europe-west2"
 REPO_NAME="cesteral"
 GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "local")
-SERVERS=(
-  "dbm-mcp"
-  "dv360-mcp"
-  "ttd-mcp"
-  "gads-mcp"
-  "meta-mcp"
-  "linkedin-mcp"
-  "tiktok-mcp"
-  "cm360-mcp"
-  "sa360-mcp"
-  "pinterest-mcp"
-  "snapchat-mcp"
-  "amazon-dsp-mcp"
-  "msads-mcp"
-)
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# The server list comes from registry.json (scripts/fleet.mjs). Captured
+# before splitting so `set -e` stops the script if the lookup fails.
+SERVER_LIST="$(node "$REPO_ROOT/scripts/fleet.mjs" servers)"
+# shellcheck disable=SC2206 # package names contain no spaces or globs
+SERVERS=($SERVER_LIST)
 
 print_info "Environment: $ENVIRONMENT"
 print_info "Project ID: $PROJECT_ID"

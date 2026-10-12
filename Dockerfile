@@ -9,40 +9,23 @@ FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb836
 RUN npm install -g pnpm@10.34.1
 WORKDIR /app
 
-# Install all dependencies (including devDeps for build)
+# Fetch every dependency into the pnpm store from the lockfile alone. `pnpm
+# fetch` needs no package.json, so this stage lists no packages: adding a server
+# needs no Dockerfile change, and the layer is cached until the lockfile changes.
 FROM base AS deps
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
-# @cesteral/shared depends on both contract-* packages (workspace:*), so their
-# manifests must be present for `pnpm install --frozen-lockfile` to resolve the
-# full workspace graph deterministically.
-COPY packages/contract-hash/package.json ./packages/contract-hash/
-COPY packages/contract-schema/package.json ./packages/contract-schema/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/dbm-mcp/package.json ./packages/dbm-mcp/
-COPY packages/dv360-mcp/package.json ./packages/dv360-mcp/
-COPY packages/ttd-mcp/package.json ./packages/ttd-mcp/
-COPY packages/gads-mcp/package.json ./packages/gads-mcp/
-COPY packages/meta-mcp/package.json ./packages/meta-mcp/
-COPY packages/linkedin-mcp/package.json ./packages/linkedin-mcp/
-COPY packages/tiktok-mcp/package.json ./packages/tiktok-mcp/
-COPY packages/cm360-mcp/package.json ./packages/cm360-mcp/
-COPY packages/sa360-mcp/package.json ./packages/sa360-mcp/
-COPY packages/pinterest-mcp/package.json ./packages/pinterest-mcp/
-COPY packages/snapchat-mcp/package.json ./packages/snapchat-mcp/
-COPY packages/amazon-dsp-mcp/package.json ./packages/amazon-dsp-mcp/
-COPY packages/msads-mcp/package.json ./packages/msads-mcp/
-RUN pnpm install --frozen-lockfile
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm fetch
 
-# Build all packages, then deploy production-only bundle for the target server.
-# `pnpm deploy` bundles workspace deps into a self-contained dir — correct for Docker.
-# pnpm 10 requires inject-workspace-packages for `deploy`; we pass it as a per-command
-# config (not repo-wide .npmrc) so the deps-stage `--frozen-lockfile` install and
-# local/CI installs are unaffected — only this deploy injects.
-FROM base AS builder
+# Link the workspace from the fetched store (offline, still frozen to the
+# lockfile), build all packages, then deploy a production-only bundle for the
+# target server. `pnpm deploy` bundles workspace deps into a self-contained dir.
+# pnpm 10 requires inject-workspace-packages for `deploy`; we pass it as a
+# per-command config (not repo-wide .npmrc) so the install and local/CI
+# installs are unaffected — only this deploy injects.
+FROM deps AS builder
 ARG SERVER_NAME
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages ./packages
 COPY . .
+RUN pnpm install --offline --frozen-lockfile
 RUN pnpm run build
 RUN pnpm --filter "@cesteral/${SERVER_NAME}" --config.inject-workspace-packages=true deploy --prod /app/deploy
 

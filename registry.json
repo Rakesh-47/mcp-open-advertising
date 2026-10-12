@@ -7,6 +7,8 @@
   "servers": [
     {
       "package": "dbm-mcp",
+      "port": 3001,
+      "tool_prefix": "dbm",
       "governed": false,
       "title": "Bid Manager MCP Server",
       "description": "Bid Manager reporting and query workflows for DV360 campaign performance analysis",
@@ -52,6 +54,8 @@
     },
     {
       "package": "dv360-mcp",
+      "port": 3002,
+      "tool_prefix": "dv360",
       "governed": true,
       "title": "DV360 MCP Server",
       "description": "DV360 campaign management — writes, targeting, custom bidding, previews, and media uploads",
@@ -154,6 +158,8 @@
     },
     {
       "package": "ttd-mcp",
+      "port": 3003,
+      "tool_prefix": "ttd",
       "governed": true,
       "title": "The Trade Desk MCP Server",
       "description": "The Trade Desk management — CRUD, GraphQL, bulk ops, and async reports",
@@ -292,6 +298,8 @@
     },
     {
       "package": "gads-mcp",
+      "port": 3004,
+      "tool_prefix": "gads",
       "governed": true,
       "title": "Google Ads MCP Server",
       "description": "Google Ads management — campaign writes, GAQL reporting, bulk mutate, validation, and previews",
@@ -375,6 +383,8 @@
     },
     {
       "package": "meta-mcp",
+      "port": 3005,
+      "tool_prefix": "meta",
       "governed": true,
       "title": "Meta Ads MCP Server",
       "description": "Meta Ads management — writes, insights, targeting, delivery estimates, previews, and media uploads",
@@ -470,6 +480,8 @@
     },
     {
       "package": "linkedin-mcp",
+      "port": 3006,
+      "tool_prefix": "linkedin",
       "governed": true,
       "title": "LinkedIn Ads MCP Server",
       "description": "LinkedIn Ads management and analytics — CRUD, targeting, delivery forecasts, and media uploads",
@@ -553,6 +565,8 @@
     },
     {
       "package": "tiktok-mcp",
+      "port": 3007,
+      "tool_prefix": "tiktok",
       "governed": true,
       "title": "TikTok Ads MCP Server",
       "description": "TikTok Ads management — CRUD, async reports, targeting, and media uploads",
@@ -638,6 +652,8 @@
     },
     {
       "package": "cm360-mcp",
+      "port": 3008,
+      "tool_prefix": "cm360",
       "governed": true,
       "title": "Campaign Manager 360 MCP Server",
       "description": "Campaign Manager 360 management — CRUD, Floodlight tracking, async reporting, and targeting",
@@ -729,6 +745,8 @@
     },
     {
       "package": "snapchat-mcp",
+      "port": 3009,
+      "tool_prefix": "snapchat",
       "governed": true,
       "title": "Snapchat Ads MCP Server",
       "description": "Snapchat Ads management — CRUD, async reports, targeting, and audience estimates",
@@ -802,6 +820,8 @@
     },
     {
       "package": "sa360-mcp",
+      "port": 3010,
+      "tool_prefix": "sa360",
       "governed": true,
       "title": "Search Ads 360 MCP Server",
       "description": "Search Ads 360 — reporting via query language, insights, and offline conversion upload",
@@ -860,6 +880,8 @@
     },
     {
       "package": "pinterest-mcp",
+      "port": 3011,
+      "tool_prefix": "pinterest",
       "governed": true,
       "title": "Pinterest Ads MCP Server",
       "description": "Pinterest Ads management — CRUD, async reports, targeting, and audience estimates",
@@ -943,6 +965,8 @@
     },
     {
       "package": "amazon-dsp-mcp",
+      "port": 3012,
+      "tool_prefix": "amazon_dsp",
       "governed": true,
       "title": "Amazon DSP MCP Server",
       "description": "Amazon DSP management — CRUD, async reports, video upload, and Ads API v1 commitments and forecasts",
@@ -1019,6 +1043,8 @@
     },
     {
       "package": "msads-mcp",
+      "port": 3013,
+      "tool_prefix": "msads",
       "governed": true,
       "title": "Microsoft Advertising MCP Server",
       "description": "Microsoft Ads management — CRUD, Google Ads import, ad extensions, and async reports",
