@@ -96,7 +96,6 @@ const config: any = {
   serviceAccountJson: undefined,
   serviceAccountFile: undefined,
   rateLimitPerMinute: 100,
-  reportCacheTtlMs: 300000,
   reportPollMaxRetries: 10,
   reportPollInitialDelayMs: 2000,
   reportPollMaxDelayMs: 60000,

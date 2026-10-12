@@ -41,7 +41,6 @@ const ConfigSchema = BaseConfigSchema.extend({
   rateLimitPerMinute: z.number().default(10),
 
   // Report Settings (Bid Manager async reports with exponential backoff)
-  reportCacheTtlMs: z.number().default(300000), // 5 minute cache
   reportPollMaxRetries: z.number().default(30), // Max polling attempts
   reportPollInitialDelayMs: z.number().default(5000), // Initial backoff delay (5s)
   reportPollMaxDelayMs: z.number().default(30000), // Max backoff delay (30s)
@@ -96,9 +95,6 @@ export function parseConfig(): AppConfig {
     rateLimitPerMinute: readRateLimitEnv(),
 
     // Report Settings
-    reportCacheTtlMs: process.env.REPORT_CACHE_TTL_MS
-      ? Number(process.env.REPORT_CACHE_TTL_MS)
-      : undefined,
     reportPollMaxRetries: process.env.REPORT_POLL_MAX_RETRIES
       ? Number(process.env.REPORT_POLL_MAX_RETRIES)
       : undefined,
