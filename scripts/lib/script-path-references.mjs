@@ -3,7 +3,7 @@
 // Script path references: every script a config file RUNS must exist.
 //
 // `package.json` scripts, GitHub workflow `run:` steps, Cloud Build steps and
-// the Dockerfile name scripts by path (`node scripts/check-platform-facts.mjs`).
+// the Dockerfile name scripts by path (`node scripts/check/check-platform-facts.mjs`).
 // Nothing checked those paths. Moving or renaming a script left a dangling
 // reference that only showed up when the thing ran, and the release workflow
 // and the scheduled drift checks run on a tag or a timer, not on a pull
