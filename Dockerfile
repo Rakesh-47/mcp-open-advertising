@@ -11,7 +11,7 @@
 ARG NODE_IMAGE=node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
 
 FROM ${NODE_IMAGE} AS base
-RUN npm install -g pnpm@10.34.1
+RUN npm install -g pnpm@10.34.5
 WORKDIR /app
 
 # Fetch every dependency into the pnpm store from the lockfile alone. `pnpm

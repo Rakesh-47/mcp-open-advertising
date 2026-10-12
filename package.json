@@ -62,7 +62,7 @@
     "vitest": "^1.6.0",
     "zod": "catalog:"
   },
-  "packageManager": "pnpm@10.34.1",
+  "packageManager": "pnpm@10.34.5",
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
