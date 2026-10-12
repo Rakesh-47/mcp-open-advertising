@@ -167,7 +167,7 @@ gcloud builds submit --config=cloudbuild.yaml --region=europe-west2 \
 
 With `_DEPLOY=true` it also runs Terraform plan and apply (by image digest), then health checks with auto-rollback. That needs a build service account allowed to plan and apply the whole stack, including project IAM bindings, which is effectively Owner. The default compute service account only has `roles/cloudbuild.builds.builder`, so until such an identity is chosen, deploy with `scripts/deploy.sh`. A deploying run also needs the gitignored `terraform/<env>.tfvars` and `terraform/backend-<env>.conf` in the upload.
 
-Machine: the default pool (`e2-standard-2`, covered by the free build-minutes). Timeout: 60 minutes.
+Machine: the default pool (`e2-standard-2`, covered by the free build-minutes). A full run took about 59 minutes; the timeout is 90 minutes.
 
 > **Production note:** Add a [Cloud Build approval gate](https://cloud.google.com/build/docs/securing-builds/gate-builds-on-approval) before the `terraform-apply` step for production environments.
 
@@ -180,7 +180,7 @@ gcloud builds submit --config=cloudbuild-manual.yaml \
   --substitutions=_ENVIRONMENT=dev
 ```
 
-Timeout: 15 minutes.
+Timeout: 60 minutes (the 13 images build one at a time).
 
 ## Credential Architecture
 
