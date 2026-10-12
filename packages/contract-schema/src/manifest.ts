@@ -12,7 +12,7 @@ import { hashAlgSchema, type HashAlg } from "./hash-alg.js";
  * lives inside the signed tarball — no separate signature).
  *
  * Two sides parse this exact shape and MUST agree: the release manifest
- * generator (`scripts/generate/generate-manifests.mjs`) writes it, and the governance
+ * generator (`scripts/generate-manifests.mjs`) writes it, and the governance
  * cache-refresh reconciler treats a successfully verified manifest as a set of
  * "blessed" tool-definition hashes — any observed `definitionHash` matching an
  * entry here is promoted to `definitionTrust = 'attested'`.
