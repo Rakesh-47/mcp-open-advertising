@@ -7,7 +7,6 @@ substitutions:
   _ARTIFACT_REGISTRY_REPO: 'cesteral'
 
 options:
-  machineType: 'N1_HIGHCPU_8'
   substitution_option: 'ALLOW_LOOSE'
   logging: CLOUD_LOGGING_ONLY
 
@@ -29,14 +28,14 @@ steps:
         set -eu
         SERVICES="$$(cat /workspace/.fleet-services)"
         [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        # Serial on purpose; see the build-images step in cloudbuild.yaml.
         for SERVICE in $$SERVICES; do
           docker build \
             -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${SHORT_SHA}" \
             -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${_ENVIRONMENT}-latest" \
             --build-arg "SERVER_NAME=$${SERVICE}" \
-            -f Dockerfile . &
+            -f Dockerfile .
         done
-        wait
     id: 'build-images'
 
   - name: 'gcr.io/cloud-builders/docker'
@@ -47,10 +46,15 @@ steps:
         set -eu
         SERVICES="$$(cat /workspace/.fleet-services)"
         [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        # Waited on by PID: a bare `wait` exits 0 even when a push failed.
+        PIDS=""
         for SERVICE in $$SERVICES; do
           docker push --all-tags "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}" &
+          PIDS="$$PIDS $$!"
         done
-        wait
+        for PID in $$PIDS; do
+          wait "$$PID"
+        done
     id: 'push-images'
     waitFor: ['build-images']
 
@@ -85,4 +89,6 @@ images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/msads-mcp:${SHORT_SHA}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/msads-mcp:${_ENVIRONMENT}-latest'
 
-timeout: '900s'
+# 13 serial image builds took about 18 minutes on the default pool; billed per
+# minute used, so headroom costs nothing unless a build needs it.
+timeout: '3600s'

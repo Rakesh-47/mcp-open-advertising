@@ -11,7 +11,6 @@ substitutions:
   _CONFIRM_PROD_APPLY: 'false'
 
 options:
-  machineType: 'N1_HIGHCPU_8'
   substitution_option: 'ALLOW_LOOSE'
   logging: CLOUD_LOGGING_ONLY
 
@@ -21,16 +20,22 @@ steps:
     args:
       - '-c'
       - |
+        # Without -e only the last command's status counted, so a failing
+        # check, build or typecheck passed the step if the tests did.
+        set -eu
         # The fleet's service list, from registry.json, for the later steps
         # (their images have no node).
-        node scripts/fleet.mjs servers > /workspace/.fleet-services || exit 1
+        node scripts/fleet.mjs servers > /workspace/.fleet-services
         npm install -g pnpm@10.34.1
         pnpm install --frozen-lockfile
         pnpm run check:registry
         pnpm run check:registry-tools
         pnpm run build
         pnpm run typecheck
-        pnpm run test
+        # Turbo runs 10 package tasks at once by default, each with its own
+        # vitest workers, which ran 8 GB out of memory (exit 137). Two at a
+        # time is all the default pool's 2 vCPUs can use anyway.
+        pnpm run test --concurrency=2
     id: 'test'
 
   - name: 'gcr.io/cloud-builders/docker'
@@ -41,14 +46,19 @@ steps:
         set -eu
         SERVICES="$$(cat /workspace/.fleet-services)"
         [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        # One at a time: the Dockerfile's dependency and monorepo-build layers
+        # do not depend on SERVER_NAME, so the first image builds them and the
+        # rest reuse the cache and only run `pnpm deploy`. In parallel, every
+        # build misses the cache and compiles the monorepo at the same time,
+        # which is what needed an 8-vCPU machine. Serial also lets `set -e`
+        # see a failure; a bare `wait` exits 0 whatever its jobs returned.
         for SERVICE in $$SERVICES; do
           docker build \
             -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${SHORT_SHA}" \
             -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${_ENVIRONMENT}-latest" \
             --build-arg "SERVER_NAME=$${SERVICE}" \
-            -f Dockerfile . &
+            -f Dockerfile .
         done
-        wait
     id: 'build-images'
     waitFor: ['test']
 
@@ -60,15 +70,16 @@ steps:
         set -eu
         SERVICES="$$(cat /workspace/.fleet-services)"
         [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        # Serial, so `--exit-code 1` fails the step. Run in the background
+        # behind a bare `wait`, a HIGH/CRITICAL finding never blocked anything.
         for SERVICE in $$SERVICES; do
           trivy image \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
             --no-progress \
             --ignore-unfixed \
-            "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${SHORT_SHA}" &
+            "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${SHORT_SHA}"
         done
-        wait
     id: 'vulnerability-scan'
     waitFor: ['build-images']
 
@@ -80,10 +91,16 @@ steps:
         set -eu
         SERVICES="$$(cat /workspace/.fleet-services)"
         [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        # Pushes are network-bound, so they stay parallel, but each job is
+        # waited on by PID: a bare `wait` exits 0 even when a push failed.
+        PIDS=""
         for SERVICE in $$SERVICES; do
           docker push --all-tags "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}" &
+          PIDS="$$PIDS $$!"
         done
-        wait
+        for PID in $$PIDS; do
+          wait "$$PID"
+        done
         # Resolve the immutable registry digest for each pushed image and persist
         # it to /workspace so the Terraform step can deploy by digest rather than
         # the mutable :SHORT_SHA tag (audit + reliable rollback).
@@ -271,4 +288,6 @@ artifacts:
     paths:
       - 'terraform/tfplan'
 
-timeout: '2400s'
+# Sized for the default pool's 2 vCPUs: billed per minute used, so headroom
+# costs nothing unless a build actually needs it.
+timeout: '3600s'
