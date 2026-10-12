@@ -4,8 +4,11 @@
 # Pinned by digest for reproducible builds and supply-chain integrity. The bare
 # `node:20-alpine` tag floats, so identical source could otherwise resolve to
 # different OS packages on each rebuild. Digest is the multi-arch index for
-# node:20-alpine; bump it deliberately when refreshing the base.
-FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS base
+# node:20-alpine; bump it deliberately when refreshing the base. Both the build
+# stages and the runtime stage start from it.
+ARG NODE_IMAGE=node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+
+FROM ${NODE_IMAGE} AS base
 RUN npm install -g pnpm@10.34.1
 WORKDIR /app
 
@@ -29,8 +32,17 @@ RUN pnpm install --offline --frozen-lockfile
 RUN pnpm run build
 RUN pnpm --filter "@cesteral/${SERVER_NAME}" --config.inject-workspace-packages=true deploy --prod /app/deploy
 
-# Production image for specific server
-FROM base AS runner
+# Production image for specific server. Built from the node image, not from
+# `base`: the server runs `node dist/index.js` and nothing else, so the runtime
+# carries no package manager. `base` adds a global pnpm, and the node image
+# ships npm, npx, corepack and yarn; each brings a dependency tree that the
+# image scan in cloudbuild.yaml (Trivy, HIGH/CRITICAL, blocking) reports and
+# that the server never loads.
+FROM ${NODE_IMAGE} AS runner
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+      /opt/yarn-v* /usr/local/bin/yarn /usr/local/bin/yarnpkg
+WORKDIR /app
 ARG SERVER_NAME
 ENV NODE_ENV=production
 ENV SERVER_NAME=${SERVER_NAME}
