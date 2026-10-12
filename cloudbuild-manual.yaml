@@ -27,13 +27,13 @@ steps:
       - '-c'
       - |
         set -eu
-        SERVICES="$(cat /workspace/.fleet-services)"
-        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
-        for SERVICE in $SERVICES; do
+        SERVICES="$$(cat /workspace/.fleet-services)"
+        [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        for SERVICE in $$SERVICES; do
           docker build \
-            -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}:${SHORT_SHA}" \
-            -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}:${_ENVIRONMENT}-latest" \
-            --build-arg "SERVER_NAME=${SERVICE}" \
+            -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${SHORT_SHA}" \
+            -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${_ENVIRONMENT}-latest" \
+            --build-arg "SERVER_NAME=$${SERVICE}" \
             -f Dockerfile . &
         done
         wait
@@ -45,10 +45,10 @@ steps:
       - '-c'
       - |
         set -eu
-        SERVICES="$(cat /workspace/.fleet-services)"
-        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
-        for SERVICE in $SERVICES; do
-          docker push --all-tags "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}" &
+        SERVICES="$$(cat /workspace/.fleet-services)"
+        [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        for SERVICE in $$SERVICES; do
+          docker push --all-tags "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}" &
         done
         wait
     id: 'push-images'

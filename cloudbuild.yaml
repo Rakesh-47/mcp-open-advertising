@@ -39,34 +39,34 @@ steps:
       - '-c'
       - |
         set -eu
-        SERVICES="$(cat /workspace/.fleet-services)"
-        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
-        for SERVICE in $SERVICES; do
+        SERVICES="$$(cat /workspace/.fleet-services)"
+        [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        for SERVICE in $$SERVICES; do
           docker build \
-            -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}:${SHORT_SHA}" \
-            -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}:${_ENVIRONMENT}-latest" \
-            --build-arg "SERVER_NAME=${SERVICE}" \
+            -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${SHORT_SHA}" \
+            -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${_ENVIRONMENT}-latest" \
+            --build-arg "SERVER_NAME=$${SERVICE}" \
             -f Dockerfile . &
         done
         wait
     id: 'build-images'
     waitFor: ['test']
 
-  - name: 'aquasecurity/trivy:0.55.2'
+  - name: 'aquasec/trivy:0.55.2'
     entrypoint: 'sh'
     args:
       - '-c'
       - |
         set -eu
-        SERVICES="$(cat /workspace/.fleet-services)"
-        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
-        for SERVICE in $SERVICES; do
+        SERVICES="$$(cat /workspace/.fleet-services)"
+        [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        for SERVICE in $$SERVICES; do
           trivy image \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
             --no-progress \
             --ignore-unfixed \
-            "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}:${SHORT_SHA}" &
+            "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}:${SHORT_SHA}" &
         done
         wait
     id: 'vulnerability-scan'
@@ -78,24 +78,24 @@ steps:
       - '-c'
       - |
         set -eu
-        SERVICES="$(cat /workspace/.fleet-services)"
-        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
-        for SERVICE in $SERVICES; do
-          docker push --all-tags "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}" &
+        SERVICES="$$(cat /workspace/.fleet-services)"
+        [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        for SERVICE in $$SERVICES; do
+          docker push --all-tags "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}" &
         done
         wait
         # Resolve the immutable registry digest for each pushed image and persist
         # it to /workspace so the Terraform step can deploy by digest rather than
         # the mutable :SHORT_SHA tag (audit + reliable rollback).
         mkdir -p /workspace/digests
-        for SERVICE in $SERVICES; do
-          IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}"
-          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE}:${SHORT_SHA}" | sed 's/^.*@//')
-          if [ -z "$DIGEST" ]; then
-            echo "Failed to resolve digest for ${IMAGE}:${SHORT_SHA}" >&2
+        for SERVICE in $$SERVICES; do
+          IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}"
+          DIGEST=$$(docker inspect --format='{{index .RepoDigests 0}}' "$${IMAGE}:${SHORT_SHA}" | sed 's/^.*@//')
+          if [ -z "$$DIGEST" ]; then
+            echo "Failed to resolve digest for $${IMAGE}:${SHORT_SHA}" >&2
             exit 1
           fi
-          echo "$DIGEST" > "/workspace/digests/${SERVICE}"
+          echo "$$DIGEST" > "/workspace/digests/$${SERVICE}"
         done
     id: 'push-images'
     waitFor: ['vulnerability-scan']
@@ -147,14 +147,14 @@ steps:
         # Same order as scripts/deploy.sh.
         IMAGES=/workspace/mcp-images.tfvars.json
         SEP=""
-        printf '{"mcp_images":{' > "$IMAGES"
-        for SERVICE in $(cat /workspace/.fleet-services); do
-          DIGEST=$(cat "/workspace/digests/${SERVICE}")
-          printf '%s"%s":"%s"' "$SEP" "$SERVICE" "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${SERVICE}@${DIGEST}" >> "$IMAGES"
+        printf '{"mcp_images":{' > "$$IMAGES"
+        for SERVICE in $$(cat /workspace/.fleet-services); do
+          DIGEST=$$(cat "/workspace/digests/$${SERVICE}")
+          printf '%s"%s":"%s"' "$$SEP" "$$SERVICE" "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/$${SERVICE}@$${DIGEST}" >> "$$IMAGES"
           SEP=","
         done
-        printf '}}\n' >> "$IMAGES"
-        terraform plan -var-file=${_ENVIRONMENT}.tfvars -var-file="$IMAGES" -out=tfplan > /workspace/plan.log 2>&1 || { cat /workspace/plan.log; exit 1; }
+        printf '}}\n' >> "$$IMAGES"
+        terraform plan -var-file=${_ENVIRONMENT}.tfvars -var-file="$$IMAGES" -out=tfplan > /workspace/plan.log 2>&1 || { cat /workspace/plan.log; exit 1; }
         cat /workspace/plan.log
         # Terraform only warns when a tfvars file sets an undeclared variable,
         # so a renamed variable would otherwise fall back to its default.
@@ -194,41 +194,41 @@ steps:
       - |
         set -euo pipefail
         FAILED_SERVICES=""
-        SERVICES="$(cat /workspace/.fleet-services)"
-        [ -n "$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
-        for SERVICE in $SERVICES; do
+        SERVICES="$$(cat /workspace/.fleet-services)"
+        [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
+        for SERVICE in $$SERVICES; do
           HEALTHY=false
-          URL=$(gcloud run services describe "$SERVICE" \
+          URL=$$(gcloud run services describe "$$SERVICE" \
             --region="${_REGION}" \
             --format='value(status.url)' 2>/dev/null || echo "")
-          if [ -z "$URL" ]; then
-            echo "WARNING: Service $SERVICE not found, skipping"
+          if [ -z "$$URL" ]; then
+            echo "WARNING: Service $$SERVICE not found, skipping"
             continue
           fi
-          for i in $(seq 1 24); do
-            if curl -s -o /dev/null -w "%{http_code}" "$URL/health" | grep -q "200"; then
+          for i in $$(seq 1 24); do
+            if curl -s -o /dev/null -w "%{http_code}" "$$URL/health" | grep -q "200"; then
               HEALTHY=true
               break
             fi
             sleep 5
           done
-          if [ "$HEALTHY" != "true" ]; then
-            FAILED_SERVICES="$FAILED_SERVICES $SERVICE"
-            PREV_REVISION=$(gcloud run revisions list \
-              --service="$SERVICE" \
+          if [ "$$HEALTHY" != "true" ]; then
+            FAILED_SERVICES="$$FAILED_SERVICES $$SERVICE"
+            PREV_REVISION=$$(gcloud run revisions list \
+              --service="$$SERVICE" \
               --region="${_REGION}" \
               --sort-by='~creationTimestamp' \
               --format='value(metadata.name)' \
               --limit=2 | tail -n1)
-            if [ -n "$PREV_REVISION" ]; then
-              gcloud run services update-traffic "$SERVICE" \
+            if [ -n "$$PREV_REVISION" ]; then
+              gcloud run services update-traffic "$$SERVICE" \
                 --region="${_REGION}" \
-                --to-revisions="${PREV_REVISION}=100"
+                --to-revisions="$${PREV_REVISION}=100"
             fi
           fi
         done
-        if [ -n "$FAILED_SERVICES" ]; then
-          echo "DEPLOYMENT FAILED — rolled back:$FAILED_SERVICES"
+        if [ -n "$$FAILED_SERVICES" ]; then
+          echo "DEPLOYMENT FAILED — rolled back:$$FAILED_SERVICES"
           exit 1
         fi
     id: 'health-check'
