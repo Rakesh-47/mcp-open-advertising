@@ -22,7 +22,7 @@ export interface JtiStore {
    *
    * The enforce-mode boot guard keys on this rather than on "was a store
    * injected?" (sweep 2026-07-25, 10-F1). Inferring safety from injection meant
-   * that following half of CLAUDE.md §6's remediation — wiring
+   * that following half of governance-runtime.md's remediation — wiring
    * `selectJtiStore(...)` without setting `GOVERNANCE_JTI_STORE=firestore` —
    * handed the factory an `InMemoryJtiStore` that the guard then treated as
    * safe, producing an in-memory enforce posture on multi-instance Cloud Run

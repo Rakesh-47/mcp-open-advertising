@@ -61,7 +61,7 @@ The `packages/` directory contains 13 independently deployable MCP servers:
 - `amazon-dsp-mcp`
 - `msads-mcp`
 
-These are the open-source connectors that customers can self-host or that Cesteral can host as part of the commercial product. The layout inside each one is described in [CLAUDE.md](../CLAUDE.md#mcp-server-architecture-pattern).
+These are the open-source connectors that customers can self-host or that Cesteral can host as part of the commercial product. The layout inside each one is described in [CLAUDE.md](../CLAUDE.md#mcp-server-architecture-pattern). Platform quirks for each are in its own `CLAUDE.md`.
 
 ### Shared runtime
 

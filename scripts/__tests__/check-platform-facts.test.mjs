@@ -407,10 +407,13 @@ describe("where the freshness half runs", () => {
     expect(contractLane).not.toContain("check-platform-facts.mjs");
   });
 
-  it("CLAUDE.md states the ledger's real size", () => {
+  it("the ledger doc states the ledger's real size", () => {
     // It said "19 facts" for a week after #210 added nine.
-    const claude = readFileSync(join(ROOT, "CLAUDE.md"), "utf-8");
-    expect(claude).toContain(`— ${ledger.facts.length} facts:`);
+    const doc = readFileSync(
+      join(ROOT, "docs", "architecture", "platform-facts-ledger.md"),
+      "utf-8"
+    );
+    expect(doc).toContain(`— ${ledger.facts.length} facts:`);
   });
 });
 

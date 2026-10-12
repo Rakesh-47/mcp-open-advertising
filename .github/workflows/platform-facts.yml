@@ -3,7 +3,7 @@
 #
 # Why (#202): this repo carries load-bearing claims it does not own — sixteen
 # hardcoded API base URLs, a date-versioned LinkedIn header, and behavioural
-# constraints in CLAUDE.md that shape entire packages. Two have already rotted:
+# constraints in the per-package CLAUDE.md files that shape entire packages. Two have already rotted:
 #
 #   - linkedin-mcp pinned `LinkedIn-Version: 202409` for roughly a year past
 #     sunset. Every call errored. Nothing detected it (#206/#209).

@@ -90,7 +90,7 @@ function resolveJtiStore(explicit: JtiStore | undefined): JtiStore {
  *
  * The signal is the STORE'S OWN `distributed` declaration, not "was a store
  * injected?" (sweep 2026-07-25, 10-F1). The old `storeInjected` short-circuit
- * meant that following half of CLAUDE.md §6's remediation — wiring
+ * meant that following half of governance-runtime.md's remediation — wiring
  * `selectJtiStore(...)` without setting `GOVERNANCE_JTI_STORE=firestore` — handed
  * the factory an `InMemoryJtiStore` and returned `ok` before the hosted branch
  * ran: an in-memory enforce posture on multi-instance Cloud Run with no throw

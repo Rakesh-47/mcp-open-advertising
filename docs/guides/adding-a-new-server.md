@@ -839,7 +839,7 @@ export const listEntitiesTool = {
 
 - **`inputSchema` is a top-level `z.object`** (`.superRefine` allowed), never a `z.union` / `z.discriminatedUnion`: the SDK publishes a union as an empty input schema.
 - **`annotations.readOnlyHint` is an explicit boolean**, and `false` for any tool whose name says it mutates or that sends PUT/PATCH/DELETE.
-- **`untrustedContent` is declared on every tool.** Platform text (entity names, ad copy, raw responses, report cells, platform error text) is attacker-controllable, so the result says where it sits: `{ structuredPaths: ["$.entities"], contentBlocks: [0] }` for a tool that returns it, or `NO_UNTRUSTED_CONTENT` (from `@cesteral/shared`) for one that returns none. IDs, statuses, counts and the caller's own input do not count. Over-marking is harmless; under-marking is the failure. After declaring, run `corepack pnpm sync:untrusted-declarations` and commit the snapshot it updates. CLAUDE.md's "Untrusted-Content Marking" section has the full rules.
+- **`untrustedContent` is declared on every tool.** Platform text (entity names, ad copy, raw responses, report cells, platform error text) is attacker-controllable, so the result says where it sits: `{ structuredPaths: ["$.entities"], contentBlocks: [0] }` for a tool that returns it, or `NO_UNTRUSTED_CONTENT` (from `@cesteral/shared`) for one that returns none. IDs, statuses, counts and the caller's own input do not count. Over-marking is harmless; under-marking is the failure. After declaring, run `corepack pnpm sync:untrusted-declarations` and commit the snapshot it updates. `docs/architecture/untrusted-content-marking.md` has the full rules.
 - **The title or description names the platform** (its `platform`, `platform_display_name` or prefix from `registry.json`). Many operation names (`get_entity`, `get_pacing_status`) exist on every server, and in a merged tool list the platform is the only disambiguator.
 - **Tool files live in `src/mcp-server/tools/definitions/` and declare `const TOOL_NAME = "..."`** (or `name:`), which `sync:registry-tools` parses.
 
@@ -1750,7 +1750,7 @@ Besides those named lists, the check counts how many lines of each file mention 
 
 - **`README.md`** fleet table: a row with the server's tool count (`check:doc-tool-counts`).
 - **`platform-facts.json`**: at least a base-URL or API-version fact and a `{platform}.rate_limit_default` fact for the package, each pinned to the literal in your config (`check:platform-facts`). Ship them as `unverified` with a `verifyBy` deadline unless you have read the vendor's page; see CLAUDE.md's "Platform-Facts Ledger". If you add facts, update the fact count in CLAUDE.md.
-- **`CLAUDE.md`**: add a bullet under "Server-Specific Notes" for platform quirks a later contributor would trip on. CLAUDE.md has no fleet table to update.
+- **`packages/{platform}-mcp/CLAUDE.md`**: write down the platform quirks a later contributor would trip on, and add a row for the package to the "Server-Specific Notes" table in the root `CLAUDE.md`. The root file has no fleet table to update.
 - **Not yet checked**: `docs/guides/ENV-VARIABLES-GUIDE.md`, `.env.example` and `scripts/create-secrets.sh`. Add the server there too.
 
 ## Step 20: Verification Checklist
