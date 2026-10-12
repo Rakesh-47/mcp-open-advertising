@@ -27,7 +27,9 @@
 // them that way, and the registry fields they rely on (`port`, `tool_prefix`)
 // are checked against the code. What remains here is static configuration
 // that cannot read the registry (Cloud Build `images:`, issue forms, docs) and
-// Terraform, whose move to `for_each` is a separate state migration.
+// the three per-service maps Terraform still keys by hand (auth defaults,
+// secret mappings, example images). Its modules, outputs, monitoring and load
+// balancer iterate the registry.
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -93,91 +95,33 @@ export const INVENTORY_SITES = [
   })),
   {
     file: "terraform/main.tf",
-    why: "Terraform never creates, monitors or routes the Cloud Run service",
-    lists: (t) => [
-      {
-        where: 'module "<server>" blocks',
-        names: captures(t, /^module "([a-z0-9_]+_mcp)" \{/gm).map(hyphenated),
-      },
-      ...captures(t, /^\s+services = \[\n([\s\S]*?)^\s+\]/gm).map((b) => ({
-        where: "monitoring services list",
-        names: captures(b, /name = "([a-z0-9-]+-mcp)"/g),
-      })),
-      ...captures(t, /fleet_service_names = \[\n([\s\S]*?)^\s+\]/gm).map((b) => ({
-        where: "fleet_service_names",
-        names: serverTokens(b),
-      })),
-      ...captures(t, /module "fleet_lb" \{[\s\S]*?depends_on = \[\n([\s\S]*?)^\s+\]/gm).map(
-        (b) => ({
-          where: "fleet_lb depends_on",
-          names: captures(b, /module\.([a-z0-9_]+_mcp),/g).map(hyphenated),
-        })
-      ),
-      {
-        where: "<server>_secret_names locals",
-        names: captures(t, /^\s+([a-z0-9_]+)_secret_names\s+= distinct/gm).map(fromShort),
-      },
-      {
-        where: "<server>_resources locals (with a matching override key)",
-        names: [
-          ...t.matchAll(
-            /^\s+([a-z0-9_]+)_resources\s+= merge\(.*lookup\(var\.service_resource_overrides, "([a-z0-9-]+-mcp)"/gm
-          ),
-        ]
-          .filter((m) => fromShort(m[1]) === m[2])
-          .map((m) => m[2]),
-      },
-      ...captures(t, /service_auth_defaults = \{\n([\s\S]*?)^\s+\}/gm).map((b) => ({
+    why: "Terraform has no default MCP_AUTH_MODE for the service, so the for_each module cannot be planned",
+    lists: (t) =>
+      captures(t, /service_auth_defaults = \{\n([\s\S]*?)^\s+\}/gm).map((b) => ({
         where: "service_auth_defaults keys",
         names: captures(b, /^\s+"([a-z0-9-]+-mcp)"\s+=/gm),
       })),
-      {
-        where: "<server>_auth_mode locals (with a matching key)",
-        names: [
-          ...t.matchAll(
-            /^\s+([a-z0-9_]+)_auth_mode\s+= lookup\(var\.service_auth_mode_overrides, "([a-z0-9-]+-mcp)"/gm
-          ),
-        ]
-          .filter((m) => fromShort(m[1]) === m[2])
-          .map((m) => m[2]),
-      },
-    ],
   },
   {
     file: "terraform/variables.tf",
-    why: "Cloud Build's -var=<server>_image has no variable to bind to",
-    lists: (t) => [
-      {
-        where: 'variable "<server>_image"',
-        names: captures(t, /^variable "([a-z0-9_]+_mcp)_image" \{/gm).map(hyphenated),
-      },
-      {
-        where: 'variable "<server>_secret_env_vars"',
-        why: "the service's secrets have no variable, so main.tf's <server>_secret_names cannot resolve",
-        names: captures(t, /^variable "([a-z0-9_]+)_secret_env_vars" \{/gm).map(fromShort),
-      },
-    ],
+    why: "the service has no secret mapping, so the for_each module cannot be planned",
+    lists: (t) =>
+      captures(t, /variable "mcp_secret_env_vars" \{[\s\S]*?default = \{\n([\s\S]*?)^ {2}\}/gm).map(
+        (b) => ({
+          where: "mcp_secret_env_vars default keys",
+          names: captures(b, /^ {4}"([a-z0-9-]+-mcp)" = \{/gm),
+        })
+      ),
   },
   ...["dev", "prod"].map((env) => ({
     file: `terraform/${env}.tfvars.example`,
     why: "the example tfvars a deployer copies has no image for the server",
-    lists: (t) => [
-      {
-        where: "<server>_mcp_image entries",
-        names: captures(t, /^([a-z0-9_]+_mcp)_image\s+=/gm).map(hyphenated),
-      },
-    ],
+    lists: (t) =>
+      captures(t, /^mcp_images = \{\n([\s\S]*?)^\}/gm).map((b) => ({
+        where: "mcp_images keys",
+        names: captures(b, /^\s+"([a-z0-9-]+-mcp)"\s+=/gm),
+      })),
   })),
-  {
-    file: "terraform/outputs.tf",
-    why: "the service URL is never exported",
-    lists: (t) => [
-      {
-        where: 'output "<server>_service_url"',
-        names: captures(t, /^output "([a-z0-9_]+_mcp)_service_url" \{/gm).map(hyphenated),
-      },
-    ],
-  },
   ...["bug_report.yml", "feature_request.yml", "new_tool_proposal.yml"].map((name) => ({
     file: `.github/ISSUE_TEMPLATE/${name}`,
     why: "reporters cannot pick the server",
@@ -239,7 +183,6 @@ export const CENSUS = {
   "terraform/main.tf": true,
   "terraform/variables.tf":
     "each server declares a different number of secrets, so per-server line counts legitimately differ",
-  "terraform/outputs.tf": true,
   "terraform/dev.tfvars.example": true,
   "terraform/prod.tfvars.example": true,
   ".github/ISSUE_TEMPLATE/bug_report.yml":
@@ -289,6 +232,13 @@ export const DERIVED = [
     scope: (t) => t.slice(0, t.search(/^images:/m)),
   },
   { file: "Dockerfile", reads: "pnpm fetch" },
+  {
+    file: "terraform/main.tf",
+    reads: "registry.json",
+    // The one hand-kept map left here is a site above.
+    scope: (t) => t.replace(/service_auth_defaults = \{[\s\S]*?\n {2}\}/, ""),
+  },
+  { file: "terraform/outputs.tf", reads: "module.mcp_service" },
 ];
 
 /**
@@ -478,7 +428,7 @@ export function checkFleetInventory(root, registry = readRegistry(root)) {
     const lines = hardcodedServerLists(scope(text));
     if (lines.length) {
       violations.push(
-        `${file}: hardcoded server list at line(s) ${lines.join(", ")}; read it from registry.json (scripts/fleet.mjs) instead`
+        `${file}: hardcoded server list at line(s) ${lines.join(", ")}; derive it from registry.json instead`
       );
     }
   }
