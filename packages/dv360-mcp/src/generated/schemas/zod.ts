@@ -34,7 +34,7 @@ export const AdGroup = z.object({
 });
 
 /**
- * A single ad associated with an ad group.
+ * LINT: LEGACY_NAMES A single ad associated with an ad group.
  */
 export const AdGroupAd = z.object({
   /** Output only. The unique ID of the ad. Assigned by the system. */
@@ -49,17 +49,17 @@ export const AdGroupAd = z.object({
   advertiserId: z.string().optional(),
   /** Output only. Details of an [audio ad](//support.google.com/displayvideo/answer/6 */
   audioAd: z.lazy(() => AudioAd).optional(),
-  /** Output only. Details of a [non-skippable short video ad](//support.google.com/di */
+  /** Optional. Details of a [non-skippable short video ad](//support.google.com/displ */
   bumperAd: z.lazy(() => BumperAd).optional(),
   /** Optional. The DCM tracking ad info. Only valid for Demand Gen ads. To remove the */
   dcmTrackingInfo: z.lazy(() => DcmTrackingInfo).optional(),
-  /** Details of a [Demand Gen carousel ad](//support.google.com/displayvideo/answer/1 */
+  /** Optional. Details of a [Demand Gen carousel ad](//support.google.com/displayvide */
   demandGenCarouselAd: z.lazy(() => DemandGenCarouselAd).optional(),
-  /** Details of a [Demand Gen image ad](//support.google.com/displayvideo/answer/1559 */
+  /** Optional. Details of a [Demand Gen image ad](//support.google.com/displayvideo/a */
   demandGenImageAd: z.lazy(() => DemandGenImageAd).optional(),
-  /** Details of a [Demand Gen product ad](//support.google.com/displayvideo/answer/15 */
+  /** Optional. Details of a [Demand Gen product ad](//support.google.com/displayvideo */
   demandGenProductAd: z.lazy(() => DemandGenProductAd).optional(),
-  /** Details of a [Demand Gen video ad](//support.google.com/displayvideo/answer/1559 */
+  /** Optional. Details of a [Demand Gen video ad](//support.google.com/displayvideo/a */
   demandGenVideoAd: z.lazy(() => DemandGenVideoAd).optional(),
   /** Required. The display name of the ad. Must be UTF-8 encoded with a maximum size  */
   displayName: z.string(),
@@ -67,17 +67,17 @@ export const AdGroupAd = z.object({
   displayVideoSourceAd: z.lazy(() => DisplayVideoSourceAd).optional(),
   /** Required. The entity status of the ad. */
   entityStatus: z.enum(["ENTITY_STATUS_UNSPECIFIED", "ENTITY_STATUS_ACTIVE", "ENTITY_STATUS_ARCHIVED", "ENTITY_STATUS_DRAFT", "ENTITY_STATUS_PAUSED", "ENTITY_STATUS_SCHEDULED_FOR_DELETION"]),
-  /** Output only. Details of an [in-stream ad skippable after 5 seconds](//support.go */
+  /** Optional. Details of an [in-stream ad skippable after 5 seconds](//support.googl */
   inStreamAd: z.lazy(() => InStreamAd).optional(),
   /** Output only. Details of an [ad served on the YouTube Home feed](//support.google */
   mastheadAd: z.lazy(() => MastheadAd).optional(),
   /** Output only. The resource name of the ad. */
   name: z.string().optional(),
-  /** Output only. Details of a [non-skippable short in-stream video ad](//support.goo */
+  /** Optional. Details of a [non-skippable short in-stream video ad](//support.google */
   nonSkippableAd: z.lazy(() => NonSkippableAd).optional(),
   /** Output only. Details of an [ad promoting a video](//support.google.com/displayvi */
   videoDiscoverAd: z.lazy(() => VideoDiscoveryAd).optional(),
-  /** Output only. Details of an [ad used in a video action campaign](//support.google */
+  /** Optional. Details of an [ad used in a video action campaign](//support.google.co */
   videoPerformanceAd: z.lazy(() => VideoPerformanceAd).optional(),
 });
 
@@ -758,8 +758,8 @@ export const BrowserAssignedTargetingOptionDetails = z.object({
  * Details for a bumper ad.
  */
 export const BumperAd = z.object({
-  /** Common ad attributes. */
-  commonInStreamAttribute: z.lazy(() => CommonInStreamAttribute).optional(),
+  /** Required. Common ad attributes. */
+  commonInStreamAttribute: z.lazy(() => CommonInStreamAttribute),
 });
 
 /**
@@ -952,20 +952,20 @@ export const CombinedAudienceTargetingSetting = z.object({
  * Common attributes for in-stream, non-skippable and bumper ads.
  */
 export const CommonInStreamAttribute = z.object({
-  /** The text on the call-to-action button. */
+  /** Optional. The text on the call-to-action button. */
   actionButtonLabel: z.string().optional(),
-  /** The headline of the call-to-action banner. */
+  /** Optional. The headline of the call-to-action banner. */
   actionHeadline: z.string().optional(),
-  /** The image which shows next to the video ad. */
+  /** Optional. The image which shows next to the video ad. */
   companionBanner: z.lazy(() => ImageAsset).optional(),
-  /** The webpage address that appears with the ad. */
-  displayUrl: z.string().optional(),
-  /** The URL address of the webpage that people reach after they click the ad. */
-  finalUrl: z.string().optional(),
-  /** The URL address loaded in the background for tracking purposes. */
+  /** Required. The webpage address that appears with the ad. */
+  displayUrl: z.string(),
+  /** Required. The URL address of the webpage that people reach after they click the  */
+  finalUrl: z.string(),
+  /** Output only. The URL address loaded in the background for tracking purposes. */
   trackingUrl: z.string().optional(),
-  /** The YouTube video of the ad. */
-  video: z.lazy(() => YoutubeVideoDetails).optional(),
+  /** Required. Immutable. The YouTube video of the ad. */
+  video: z.lazy(() => YoutubeVideoDetails),
 });
 
 /**
@@ -1134,7 +1134,7 @@ export const Creative = z.object({
   skipOffset: z.lazy(() => AudioVideoOffset).optional(),
   /** Optional. Whether the user can choose to skip a video creative. This field is on */
   skippable: z.boolean().optional(),
-  /** Optional. Whether the creative contains synthetic content or was created using A */
+  /** Optional. Whether to add a label to the creative as created or edited using AI w */
   syntheticContentAttestationStatus: z.enum(["SYNTHETIC_CONTENT_ATTESTATION_STATUS_UNSPECIFIED", "NOT_SYNTHETIC", "IS_SYNTHETIC"]).optional(),
   /** Optional. The original third-party tag used for the creative. Required and only  */
   thirdPartyTag: z.string().optional(),
@@ -1440,7 +1440,7 @@ export const DeviceMakeModelAssignedTargetingOptionDetails = z.object({
 export const DeviceTypeAssignedTargetingOptionDetails = z.object({
   /** Required. The display name of the device type. */
   deviceType: z.enum(["DEVICE_TYPE_UNSPECIFIED", "DEVICE_TYPE_COMPUTER", "DEVICE_TYPE_CONNECTED_TV", "DEVICE_TYPE_SMART_PHONE", "DEVICE_TYPE_TABLET", "DEVICE_TYPE_CONNECTED_DEVICE"]),
-  /** Output only. Bid multiplier allows you to show your ads more or less frequently  */
+  /** Optional. Bid multiplier allows you to show your ads more or less frequently bas */
   youtubeAndPartnersBidMultiplier: z.number().optional(),
 });
 
@@ -1712,9 +1712,9 @@ export const ImageAsset = z.object({
  * Details for an in-stream ad.
  */
 export const InStreamAd = z.object({
-  /** Common ad attributes. */
-  commonInStreamAttribute: z.lazy(() => CommonInStreamAttribute).optional(),
-  /** The custom parameters and accompanying values to add to the tracking URL. */
+  /** Required. Common ad attributes. */
+  commonInStreamAttribute: z.lazy(() => CommonInStreamAttribute),
+  /** Optional. The custom parameters and accompanying values to add to the tracking U */
   customParameters: z.record(z.string()).optional(),
 });
 
@@ -1831,7 +1831,7 @@ export const IntegrationDetails = z.object({
 });
 
 /**
- * Targeting details for inventory source. This will be populated in the details field of an AssignedTargetingOption when targeting_type is `TARGETING_TYPE_INVENTORY_SOURCE`.
+ * Targeting details for inventory source. This will be populated in the details field of an AssignedTargetingOption when targeting_type is one of `TARGETING_TYPE_INVENTORY_SOURCE` or `TARGETING_TYPE_INVENTORY_SOURCE_DEAL`.
  */
 export const InventorySourceAssignedTargetingOptionDetails = z.object({
   /** Required. ID of the inventory source. Should refer to the inventory_source_id fi */
@@ -1944,7 +1944,7 @@ export const LineItem = z.object({
   updateTime: z.string().optional(),
   /** Output only. The warning messages generated by the line item. These warnings do  */
   warningMessages: z.array(z.enum(["LINE_ITEM_WARNING_MESSAGE_UNSPECIFIED", "INVALID_FLIGHT_DATES", "EXPIRED", "PENDING_FLIGHT", "ALL_PARTNER_ENABLED_EXCHANGES_NEGATIVELY_TARGETED", "INVALID_INVENTORY_SOURCE", "APP_INVENTORY_INVALID_SITE_TARGETING", "APP_INVENTORY_INVALID_AUDIENCE_LISTS", "NO_VALID_CREATIVE", "PARENT_INSERTION_ORDER_PAUSED", "PARENT_INSERTION_ORDER_EXPIRED"])).optional(),
-  /** Output only. Settings specific to YouTube and Partners line items. */
+  /** Optional. Settings specific to YouTube and Partners line items. */
   youtubeAndPartnersSettings: z.lazy(() => YoutubeAndPartnersSettings).optional(),
 });
 
@@ -2151,9 +2151,9 @@ export const NegativeKeywordListAssignedTargetingOptionDetails = z.object({
  * Details for a non-skippable ad.
  */
 export const NonSkippableAd = z.object({
-  /** Common ad attributes. */
-  commonInStreamAttribute: z.lazy(() => CommonInStreamAttribute).optional(),
-  /** The custom parameters and accompanying values to add to the tracking URL. */
+  /** Required. Common ad attributes. */
+  commonInStreamAttribute: z.lazy(() => CommonInStreamAttribute),
+  /** Optional. The custom parameters and accompanying values to add to the tracking U */
   customParameters: z.record(z.string()).optional(),
 });
 
@@ -2454,7 +2454,7 @@ export const SdfConfig = z.object({
   /** An administrator email address to which the SDF processing status reports will b */
   adminEmail: z.string().optional(),
   /** Required. The version of SDF being used. */
-  version: z.enum(["SDF_VERSION_UNSPECIFIED", "SDF_VERSION_3_1", "SDF_VERSION_4", "SDF_VERSION_4_1", "SDF_VERSION_4_2", "SDF_VERSION_5", "SDF_VERSION_5_1", "SDF_VERSION_5_2", "SDF_VERSION_5_3", "SDF_VERSION_5_4", "SDF_VERSION_5_5", "SDF_VERSION_6", "SDF_VERSION_7", "SDF_VERSION_7_1", "SDF_VERSION_8", "SDF_VERSION_8_1", "SDF_VERSION_9", "SDF_VERSION_9_1", "SDF_VERSION_9_2", "SDF_VERSION_10"]),
+  version: z.enum(["SDF_VERSION_UNSPECIFIED", "SDF_VERSION_3_1", "SDF_VERSION_4", "SDF_VERSION_4_1", "SDF_VERSION_4_2", "SDF_VERSION_5", "SDF_VERSION_5_1", "SDF_VERSION_5_2", "SDF_VERSION_5_3", "SDF_VERSION_5_4", "SDF_VERSION_5_5", "SDF_VERSION_6", "SDF_VERSION_7", "SDF_VERSION_7_1", "SDF_VERSION_8", "SDF_VERSION_8_1", "SDF_VERSION_9", "SDF_VERSION_9_1", "SDF_VERSION_9_2", "SDF_VERSION_10", "SDF_VERSION_10_1"]),
 });
 
 /**
@@ -2479,7 +2479,7 @@ export const SelectedInventories = z.object({
  * Targeting details for sensitive category. This will be populated in the details field of an AssignedTargetingOption when targeting_type is `TARGETING_TYPE_SENSITIVE_CATEGORY_EXCLUSION`.
  */
 export const SensitiveCategoryAssignedTargetingOptionDetails = z.object({
-  /** Required. An enum for the DV360 Sensitive category content classified to be EXCL */
+  /** Required. An enum for the Display & Video 360 Sensitive category content classif */
   excludedSensitiveCategory: z.enum(["SENSITIVE_CATEGORY_UNSPECIFIED", "SENSITIVE_CATEGORY_ADULT", "SENSITIVE_CATEGORY_DEROGATORY", "SENSITIVE_CATEGORY_DOWNLOADS_SHARING", "SENSITIVE_CATEGORY_WEAPONS", "SENSITIVE_CATEGORY_GAMBLING", "SENSITIVE_CATEGORY_VIOLENCE", "SENSITIVE_CATEGORY_SUGGESTIVE", "SENSITIVE_CATEGORY_PROFANITY", "SENSITIVE_CATEGORY_ALCOHOL", "SENSITIVE_CATEGORY_DRUGS", "SENSITIVE_CATEGORY_TOBACCO", "SENSITIVE_CATEGORY_POLITICS", "SENSITIVE_CATEGORY_RELIGION", "SENSITIVE_CATEGORY_TRAGEDY", "SENSITIVE_CATEGORY_TRANSPORTATION_ACCIDENTS", "SENSITIVE_CATEGORY_SENSITIVE_SOCIAL_ISSUES", "SENSITIVE_CATEGORY_SHOCKING", "SENSITIVE_CATEGORY_EMBEDDED_VIDEO", "SENSITIVE_CATEGORY_LIVE_STREAMING_VIDEO"]),
 });
 
@@ -2576,7 +2576,7 @@ export const ThirdPartyVendorConfig = z.object({
   /** The ID used by the platform of the third-party vendor to identify the line item. */
   placementId: z.string().optional(),
   /** The third-party measurement vendor. */
-  vendor: z.enum(["THIRD_PARTY_VENDOR_UNSPECIFIED", "THIRD_PARTY_VENDOR_MOAT", "THIRD_PARTY_VENDOR_DOUBLE_VERIFY", "THIRD_PARTY_VENDOR_INTEGRAL_AD_SCIENCE", "THIRD_PARTY_VENDOR_COMSCORE", "THIRD_PARTY_VENDOR_TELEMETRY", "THIRD_PARTY_VENDOR_MEETRICS", "THIRD_PARTY_VENDOR_ZEFR", "THIRD_PARTY_VENDOR_NIELSEN", "THIRD_PARTY_VENDOR_KANTAR", "THIRD_PARTY_VENDOR_DYNATA", "THIRD_PARTY_VENDOR_TRANSUNION", "THIRD_PARTY_VENDOR_ORIGIN", "THIRD_PARTY_VENDOR_GEMIUS", "THIRD_PARTY_VENDOR_MEDIA_SCOPE", "THIRD_PARTY_VENDOR_AUDIENCE_PROJECT", "THIRD_PARTY_VENDOR_VIDEO_AMP", "THIRD_PARTY_VENDOR_ISPOT_TV", "THIRD_PARTY_VENDOR_INTAGE", "THIRD_PARTY_VENDOR_MACROMILL", "THIRD_PARTY_VENDOR_VIDEO_RESEARCH"]).optional(),
+  vendor: z.enum(["THIRD_PARTY_VENDOR_UNSPECIFIED", "THIRD_PARTY_VENDOR_MOAT", "THIRD_PARTY_VENDOR_DOUBLE_VERIFY", "THIRD_PARTY_VENDOR_INTEGRAL_AD_SCIENCE", "THIRD_PARTY_VENDOR_COMSCORE", "THIRD_PARTY_VENDOR_TELEMETRY", "THIRD_PARTY_VENDOR_MEETRICS", "THIRD_PARTY_VENDOR_ZEFR", "THIRD_PARTY_VENDOR_NIELSEN", "THIRD_PARTY_VENDOR_KANTAR", "THIRD_PARTY_VENDOR_DYNATA", "THIRD_PARTY_VENDOR_TRANSUNION", "THIRD_PARTY_VENDOR_ORIGIN", "THIRD_PARTY_VENDOR_GEMIUS", "THIRD_PARTY_VENDOR_MEDIA_SCOPE", "THIRD_PARTY_VENDOR_AUDIENCE_PROJECT", "THIRD_PARTY_VENDOR_VIDEO_AMP", "THIRD_PARTY_VENDOR_ISPOT_TV", "THIRD_PARTY_VENDOR_INTAGE", "THIRD_PARTY_VENDOR_MACROMILL", "THIRD_PARTY_VENDOR_VIDEO_RESEARCH", "THIRD_PARTY_VENDOR_AQUILA"]).optional(),
 });
 
 /**
@@ -2725,30 +2725,30 @@ export const VideoDiscoveryAd = z.object({
  * Details for a video performance ad.
  */
 export const VideoPerformanceAd = z.object({
-  /** The list of text assets shown on the call-to-action button. */
+  /** Optional. The list of text assets shown on the call-to-action button. */
   actionButtonLabels: z.array(z.string()).optional(),
-  /** The list of companion banners used by this ad. */
+  /** Optional. The list of companion banners used by this ad. */
   companionBanners: z.array(z.lazy(() => ImageAsset)).optional(),
-  /** The custom parameters and accompanying values to add to the tracking URL. */
+  /** Optional. The custom parameters and accompanying values to add to the tracking U */
   customParameters: z.record(z.string()).optional(),
-  /** The list of descriptions shown on the call-to-action banner. */
+  /** Optional. The list of descriptions shown on the call-to-action banner. */
   descriptions: z.array(z.string()).optional(),
-  /** The first piece after the domain in the display URL. */
+  /** Optional. The first piece after the domain in the display URL. */
   displayUrlBreadcrumb1: z.string().optional(),
-  /** The second piece after the domain in the display URL. */
+  /** Optional. The second piece after the domain in the display URL. */
   displayUrlBreadcrumb2: z.string().optional(),
-  /** The domain of the display URL. */
+  /** Output only. The domain of the display URL. */
   domain: z.string().optional(),
-  /** The URL address of the webpage that people reach after they click the ad. */
-  finalUrl: z.string().optional(),
-  /** The list of headlines shown on the call-to-action banner. */
+  /** Required. The URL address of the webpage that people reach after they click the  */
+  finalUrl: z.string(),
+  /** Optional. The list of headlines shown on the call-to-action banner. */
   headlines: z.array(z.string()).optional(),
-  /** The list of long headlines shown on the call-to-action banner. */
+  /** Optional. The list of long headlines shown on the call-to-action banner. */
   longHeadlines: z.array(z.string()).optional(),
-  /** The URL address loaded in the background for tracking purposes. */
+  /** Output only. The URL address loaded in the background for tracking purposes. */
   trackingUrl: z.string().optional(),
-  /** The list of YouTube video assets used by this ad. */
-  videos: z.array(z.lazy(() => YoutubeVideoDetails)).optional(),
+  /** Required. The list of YouTube video assets used by this ad. */
+  videos: z.array(z.lazy(() => YoutubeVideoDetails)),
 });
 
 /**
@@ -2857,7 +2857,7 @@ export const YoutubeVideoAssignedTargetingOptionDetails = z.object({
 export const YoutubeVideoDetails = z.object({
   /** Output only. The YouTube video ID which can be searched on YouTube webpage. */
   id: z.string().optional(),
-  /** The reason why the video data is not available. */
+  /** Output only. The reason why the video data is not available. */
   unavailableReason: z.enum(["VIDEO_UNAVAILABLE_REASON_UNSPECIFIED", "VIDEO_UNAVAILABLE_REASON_PRIVATE", "VIDEO_UNAVAILABLE_REASON_DELETED"]).optional(),
   /** Required. The YouTube video asset id. This is the adAssetId of an AdAsset resour */
   videoAssetId: z.string(),
