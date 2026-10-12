@@ -12,5 +12,12 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["scripts/**/*.test.mjs", "evals/**/*.test.mjs"],
+    // Most suites here boot real built servers in-process (scripts/lib/boot-server.mjs),
+    // importing a server's whole dist graph. One boot is about 2s alone, but vitest
+    // runs the files in parallel, and under that load a boot regularly passes the
+    // 5s default: the failures moved between runs and files (verification-ledger,
+    // write-coverage, wire-request-coverage), and passed when run alone.
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
   },
 });
