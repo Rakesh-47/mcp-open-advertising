@@ -1,6 +1,6 @@
 # MCP Tasks Primitive (SEP-1686) — Adoption Plan
 
-**Status:** Future / not scheduled. This is a design note, not an executing-plans plan.
+**Status (checked 2026-10-12):** Partly adopted. The shared `registerAsyncTaskTool` helper and `dbm_run_custom_query_async` use the MCP Tasks primitive; every other server still exposes submit / poll / download as separate tools, and the rest of this plan is not scheduled. This is a design note, not an executing-plans plan.
 
 **Goal:** Adopt the MCP Tasks primitive ([SEP-1686](https://modelcontextprotocol.io/community/seps/1686-tasks), Final in spec `2025-11-25`) so async server flows stop being agent-orchestrated tool chains and become host-orchestrated task lifecycles. The headline payoff is **tool deletion**: ~14–18 tools across 7 servers collapse once Tasks-aware clients exist.
 
