@@ -33,10 +33,13 @@ RUN pnpm fetch
 # per-command config (not repo-wide .npmrc) so the install and local/CI
 # installs are unaffected — only this deploy injects.
 FROM deps AS builder
-ARG SERVER_NAME
 COPY . .
 RUN pnpm install --offline --frozen-lockfile
 RUN pnpm run build
+# Declared after the build on purpose: every layer above is then identical for
+# all servers, so one fleet build compiles the monorepo once and the other
+# images reuse the cached layer.
+ARG SERVER_NAME
 RUN pnpm --filter "@cesteral/${SERVER_NAME}" --config.inject-workspace-packages=true deploy --prod /app/deploy
 
 # Production image for specific server. Built from the node image, not from
