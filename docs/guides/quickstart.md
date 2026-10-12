@@ -24,8 +24,8 @@ work, jump to [No-credential evaluation](#no-credential-evaluation).
 
 ## Prerequisites
 
-- Node.js 20+
-- pnpm 8+ -- `npm install -g pnpm`
+- Node.js 22+
+- pnpm 10 -- the repo pins `packageManager: pnpm@10.34.5`; run `corepack enable` (or prefix commands with `corepack pnpm`)
 - An ad platform account with API access for one of the paths above
 
 ---
