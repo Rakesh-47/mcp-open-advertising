@@ -47,7 +47,7 @@ export interface components {
             /** @description Optional. The [optimized targeting](//support.google.com/displayvideo/answer/12060859) settings of the ad group. */
             targetingExpansion?: components["schemas"]["TargetingExpansionConfig"];
         };
-        /** @description A single ad associated with an ad group. */
+        /** @description LINT: LEGACY_NAMES A single ad associated with an ad group. */
         AdGroupAd: {
             /**
              * Format: int64
@@ -70,17 +70,17 @@ export interface components {
             advertiserId?: string;
             /** @description Output only. Details of an [audio ad](//support.google.com/displayvideo/answer/6274216) used for reach marketing objectives. */
             audioAd?: components["schemas"]["AudioAd"];
-            /** @description Output only. Details of a [non-skippable short video ad](//support.google.com/displayvideo/answer/6274216), equal to or less than 6 seconds, used for reach. */
+            /** @description Optional. Details of a [non-skippable short video ad](//support.google.com/displayvideo/answer/6274216), equal to or less than 6 seconds, used for reach. */
             bumperAd?: components["schemas"]["BumperAd"];
             /** @description Optional. The DCM tracking ad info. Only valid for Demand Gen ads. To remove the DCM tracking ad info, please leave this field empty. */
             dcmTrackingInfo?: components["schemas"]["DcmTrackingInfo"];
-            /** @description Details of a [Demand Gen carousel ad](//support.google.com/displayvideo/answer/15598924?&sjid=11207068802760924844-NC#CarouselAd). */
+            /** @description Optional. Details of a [Demand Gen carousel ad](//support.google.com/displayvideo/answer/15598924?&sjid=11207068802760924844-NC#CarouselAd). */
             demandGenCarouselAd?: components["schemas"]["DemandGenCarouselAd"];
-            /** @description Details of a [Demand Gen image ad](//support.google.com/displayvideo/answer/15598924?&sjid=11207068802760924844-NC#ImageAd). */
+            /** @description Optional. Details of a [Demand Gen image ad](//support.google.com/displayvideo/answer/15598924?&sjid=11207068802760924844-NC#ImageAd). */
             demandGenImageAd?: components["schemas"]["DemandGenImageAd"];
-            /** @description Details of a [Demand Gen product ad](//support.google.com/displayvideo/answer/15598924?&sjid=11207068802760924844-NC#Product-onlyAd). */
+            /** @description Optional. Details of a [Demand Gen product ad](//support.google.com/displayvideo/answer/15598924?&sjid=11207068802760924844-NC#Product-onlyAd). */
             demandGenProductAd?: components["schemas"]["DemandGenProductAd"];
-            /** @description Details of a [Demand Gen video ad](//support.google.com/displayvideo/answer/15598924?&sjid=11207068802760924844-NC#VideoAd). */
+            /** @description Optional. Details of a [Demand Gen video ad](//support.google.com/displayvideo/answer/15598924?&sjid=11207068802760924844-NC#VideoAd). */
             demandGenVideoAd?: components["schemas"]["DemandGenVideoAd"];
             /** @description Required. The display name of the ad. Must be UTF-8 encoded with a maximum size of 255 bytes. */
             displayName: string;
@@ -91,17 +91,17 @@ export interface components {
              * @enum {string}
              */
             entityStatus: "ENTITY_STATUS_UNSPECIFIED" | "ENTITY_STATUS_ACTIVE" | "ENTITY_STATUS_ARCHIVED" | "ENTITY_STATUS_DRAFT" | "ENTITY_STATUS_PAUSED" | "ENTITY_STATUS_SCHEDULED_FOR_DELETION";
-            /** @description Output only. Details of an [in-stream ad skippable after 5 seconds](//support.google.com/displayvideo/answer/6274216), used for brand awareness or reach marketing objectives. */
+            /** @description Optional. Details of an [in-stream ad skippable after 5 seconds](//support.google.com/displayvideo/answer/6274216), used for brand awareness or reach marketing objectives. */
             inStreamAd?: components["schemas"]["InStreamAd"];
             /** @description Output only. Details of an [ad served on the YouTube Home feed](//support.google.com/google-ads/answer/9709826). */
             mastheadAd?: components["schemas"]["MastheadAd"];
             /** @description Output only. The resource name of the ad. */
             name?: string;
-            /** @description Output only. Details of a [non-skippable short in-stream video ad](//support.google.com/displayvideo/answer/6274216), between 6 and 15 seconds, used for reach marketing objectives. */
+            /** @description Optional. Details of a [non-skippable short in-stream video ad](//support.google.com/displayvideo/answer/6274216), between 6 and 15 seconds, used for reach marketing objectives. */
             nonSkippableAd?: components["schemas"]["NonSkippableAd"];
             /** @description Output only. Details of an [ad promoting a video](//support.google.com/displayvideo/answer/6274216) that shows in places of discovery. */
             videoDiscoverAd?: components["schemas"]["VideoDiscoveryAd"];
-            /** @description Output only. Details of an [ad used in a video action campaign](//support.google.com/google-ads/answer/10147229) to drive actions to the business, service or product. */
+            /** @description Optional. Details of an [ad used in a video action campaign](//support.google.com/google-ads/answer/10147229) to drive actions to the business, service or product. */
             videoPerformanceAd?: components["schemas"]["VideoPerformanceAd"];
         };
         /** @description The inventory control of the ad group. */
@@ -645,7 +645,7 @@ export interface components {
              * @enum {string}
              */
             inheritance?: "INHERITANCE_UNSPECIFIED" | "NOT_INHERITED" | "INHERITED_FROM_PARTNER" | "INHERITED_FROM_ADVERTISER";
-            /** @description Inventory source details. This field will be populated when the targeting_type is `TARGETING_TYPE_INVENTORY_SOURCE`. */
+            /** @description Inventory source details. This field will be populated when the targeting_type is `TARGETING_TYPE_INVENTORY_SOURCE` or `TARGETING_TYPE_INVENTORY_SOURCE_DEAL`. */
             inventorySourceDetails?: components["schemas"]["InventorySourceAssignedTargetingOptionDetails"];
             /** @description Inventory source group details. This field will be populated when the targeting_type is `TARGETING_TYPE_INVENTORY_SOURCE_GROUP`. */
             inventorySourceGroupDetails?: components["schemas"]["InventorySourceGroupAssignedTargetingOptionDetails"];
@@ -782,8 +782,8 @@ export interface components {
         };
         /** @description Details for a bumper ad. */
         BumperAd: {
-            /** @description Common ad attributes. */
-            commonInStreamAttribute?: components["schemas"]["CommonInStreamAttribute"];
+            /** @description Required. Common ad attributes. */
+            commonInStreamAttribute: components["schemas"]["CommonInStreamAttribute"];
         };
         /** @description Details for assigned Business chain targeting option. This will be populated in the details field of an AssignedTargetingOption when targeting_type is `TARGETING_TYPE_BUSINESS_CHAIN`. */
         BusinessChainAssignedTargetingOptionDetails: {
@@ -991,20 +991,20 @@ export interface components {
         };
         /** @description Common attributes for in-stream, non-skippable and bumper ads. */
         CommonInStreamAttribute: {
-            /** @description The text on the call-to-action button. */
+            /** @description Optional. The text on the call-to-action button. */
             actionButtonLabel?: string;
-            /** @description The headline of the call-to-action banner. */
+            /** @description Optional. The headline of the call-to-action banner. */
             actionHeadline?: string;
-            /** @description The image which shows next to the video ad. */
+            /** @description Optional. The image which shows next to the video ad. */
             companionBanner?: components["schemas"]["ImageAsset"];
-            /** @description The webpage address that appears with the ad. */
-            displayUrl?: string;
-            /** @description The URL address of the webpage that people reach after they click the ad. */
-            finalUrl?: string;
-            /** @description The URL address loaded in the background for tracking purposes. */
+            /** @description Required. The webpage address that appears with the ad. */
+            displayUrl: string;
+            /** @description Required. The URL address of the webpage that people reach after they click the ad. */
+            finalUrl: string;
+            /** @description Output only. The URL address loaded in the background for tracking purposes. */
             trackingUrl?: string;
-            /** @description The YouTube video of the ad. */
-            video?: components["schemas"]["YoutubeVideoDetails"];
+            /** @description Required. Immutable. The YouTube video of the ad. */
+            video: components["schemas"]["YoutubeVideoDetails"];
         };
         /** @description Details for content duration assigned targeting option. This will be populated in the content_duration_details field when targeting_type is `TARGETING_TYPE_CONTENT_DURATION`. Explicitly targeting all options is not supported. Remove all content duration targeting options to achieve this effect. */
         ContentDurationAssignedTargetingOptionDetails: {
@@ -1204,7 +1204,7 @@ export interface components {
             /** @description Optional. Whether the user can choose to skip a video creative. This field is only supported for the following creative_type: * `CREATIVE_TYPE_VIDEO` */
             skippable?: boolean;
             /**
-             * @description Optional. Whether the creative contains synthetic content or was created using AI.
+             * @description Optional. Whether to add a label to the creative as created or edited using AI when served in regions with local AI labeling regulations.
              * @enum {string}
              */
             syntheticContentAttestationStatus?: "SYNTHETIC_CONTENT_ATTESTATION_STATUS_UNSPECIFIED" | "NOT_SYNTHETIC" | "IS_SYNTHETIC";
@@ -1561,14 +1561,14 @@ export interface components {
             deviceType: "DEVICE_TYPE_UNSPECIFIED" | "DEVICE_TYPE_COMPUTER" | "DEVICE_TYPE_CONNECTED_TV" | "DEVICE_TYPE_SMART_PHONE" | "DEVICE_TYPE_TABLET" | "DEVICE_TYPE_CONNECTED_DEVICE";
             /**
              * Format: double
-             * @description Output only. Bid multiplier allows you to show your ads more or less frequently based on the device type. It will apply a multiplier on the original bid price. When this field is 0, it indicates this field is not applicable instead of multiplying 0 on the original bid price. For example, if the bid price without multiplier is $10.0 and the multiplier is 1.5 for Tablet, the resulting bid price for Tablet will be $15.0. Only applicable to YouTube and Partners line items.
+             * @description Optional. Bid multiplier allows you to show your ads more or less frequently based on the device type. It will apply a multiplier on the original bid price. When this field is 0, it indicates this field is not applicable instead of multiplying 0 on the original bid price. For example, if the bid price without multiplier is $10.0 and the multiplier is 1.5 for Tablet, the resulting bid price for Tablet will be $15.0. Only applicable to YouTube and Partners line items.
              */
             youtubeAndPartnersBidMultiplier?: number;
         };
         /** @description Targeting details for digital content label. This will be populated in the details field of an AssignedTargetingOption when targeting_type is `TARGETING_TYPE_DIGITAL_CONTENT_LABEL_EXCLUSION`. */
         DigitalContentLabelAssignedTargetingOptionDetails: {
             /**
-             * @description Required. The display name of the digital content label rating tier to be EXCLUDED.
+             * @description Required. The display name of the digital content label rating tier to be EXCLUDED. This field only accepts the value `CONTENT_RATING_TIER_UNRATED`.
              * @enum {string}
              */
             excludedContentRatingTier: "CONTENT_RATING_TIER_UNSPECIFIED" | "CONTENT_RATING_TIER_UNRATED" | "CONTENT_RATING_TIER_GENERAL" | "CONTENT_RATING_TIER_PARENTAL_GUIDANCE" | "CONTENT_RATING_TIER_TEENS" | "CONTENT_RATING_TIER_MATURE" | "CONTENT_RATING_TIER_FAMILIES";
@@ -1849,9 +1849,9 @@ export interface components {
         };
         /** @description Details for an in-stream ad. */
         InStreamAd: {
-            /** @description Common ad attributes. */
-            commonInStreamAttribute?: components["schemas"]["CommonInStreamAttribute"];
-            /** @description The custom parameters and accompanying values to add to the tracking URL. */
+            /** @description Required. Common ad attributes. */
+            commonInStreamAttribute: components["schemas"]["CommonInStreamAttribute"];
+            /** @description Optional. The custom parameters and accompanying values to add to the tracking URL. */
             customParameters?: {
                 [key: string]: string;
             };
@@ -2025,7 +2025,7 @@ export interface components {
             /** @description An external identifier to be associated with the entry. The integration code will show up together with the entry in many places in the system, for example, reporting. Must be UTF-8 encoded with a length of no more than 500 characters. */
             integrationCode?: string;
         };
-        /** @description Targeting details for inventory source. This will be populated in the details field of an AssignedTargetingOption when targeting_type is `TARGETING_TYPE_INVENTORY_SOURCE`. */
+        /** @description Targeting details for inventory source. This will be populated in the details field of an AssignedTargetingOption when targeting_type is one of `TARGETING_TYPE_INVENTORY_SOURCE` or `TARGETING_TYPE_INVENTORY_SOURCE_DEAL`. */
         InventorySourceAssignedTargetingOptionDetails: {
             /**
              * Format: int64
@@ -2167,7 +2167,7 @@ export interface components {
             updateTime?: string;
             /** @description Output only. The warning messages generated by the line item. These warnings do not block saving the line item, but some may block the line item from running. */
             warningMessages?: ("LINE_ITEM_WARNING_MESSAGE_UNSPECIFIED" | "INVALID_FLIGHT_DATES" | "EXPIRED" | "PENDING_FLIGHT" | "ALL_PARTNER_ENABLED_EXCHANGES_NEGATIVELY_TARGETED" | "INVALID_INVENTORY_SOURCE" | "APP_INVENTORY_INVALID_SITE_TARGETING" | "APP_INVENTORY_INVALID_AUDIENCE_LISTS" | "NO_VALID_CREATIVE" | "PARENT_INSERTION_ORDER_PAUSED" | "PARENT_INSERTION_ORDER_EXPIRED")[];
-            /** @description Output only. Settings specific to YouTube and Partners line items. */
+            /** @description Optional. Settings specific to YouTube and Partners line items. */
             youtubeAndPartnersSettings?: components["schemas"]["YoutubeAndPartnersSettings"];
         };
         /** @description Settings that control how budget is allocated. */
@@ -2374,9 +2374,9 @@ export interface components {
         };
         /** @description Details for a non-skippable ad. */
         NonSkippableAd: {
-            /** @description Common ad attributes. */
-            commonInStreamAttribute?: components["schemas"]["CommonInStreamAttribute"];
-            /** @description The custom parameters and accompanying values to add to the tracking URL. */
+            /** @description Required. Common ad attributes. */
+            commonInStreamAttribute: components["schemas"]["CommonInStreamAttribute"];
+            /** @description Optional. The custom parameters and accompanying values to add to the tracking URL. */
             customParameters?: {
                 [key: string]: string;
             };
@@ -2730,7 +2730,7 @@ export interface components {
              * @description Required. The version of SDF being used.
              * @enum {string}
              */
-            version: "SDF_VERSION_UNSPECIFIED" | "SDF_VERSION_3_1" | "SDF_VERSION_4" | "SDF_VERSION_4_1" | "SDF_VERSION_4_2" | "SDF_VERSION_5" | "SDF_VERSION_5_1" | "SDF_VERSION_5_2" | "SDF_VERSION_5_3" | "SDF_VERSION_5_4" | "SDF_VERSION_5_5" | "SDF_VERSION_6" | "SDF_VERSION_7" | "SDF_VERSION_7_1" | "SDF_VERSION_8" | "SDF_VERSION_8_1" | "SDF_VERSION_9" | "SDF_VERSION_9_1" | "SDF_VERSION_9_2" | "SDF_VERSION_10";
+            version: "SDF_VERSION_UNSPECIFIED" | "SDF_VERSION_3_1" | "SDF_VERSION_4" | "SDF_VERSION_4_1" | "SDF_VERSION_4_2" | "SDF_VERSION_5" | "SDF_VERSION_5_1" | "SDF_VERSION_5_2" | "SDF_VERSION_5_3" | "SDF_VERSION_5_4" | "SDF_VERSION_5_5" | "SDF_VERSION_6" | "SDF_VERSION_7" | "SDF_VERSION_7_1" | "SDF_VERSION_8" | "SDF_VERSION_8_1" | "SDF_VERSION_9" | "SDF_VERSION_9_1" | "SDF_VERSION_9_2" | "SDF_VERSION_10" | "SDF_VERSION_10_1";
         };
         /** @description The inventory control of the ad group. */
         SelectedInventories: {
@@ -2750,7 +2750,7 @@ export interface components {
         /** @description Targeting details for sensitive category. This will be populated in the details field of an AssignedTargetingOption when targeting_type is `TARGETING_TYPE_SENSITIVE_CATEGORY_EXCLUSION`. */
         SensitiveCategoryAssignedTargetingOptionDetails: {
             /**
-             * @description Required. An enum for the DV360 Sensitive category content classified to be EXCLUDED.
+             * @description Required. An enum for the Display & Video 360 Sensitive category content classified to be EXCLUDED. This field only accepts the following values: * `SENSITIVE_CATEGORY_EMBEDDED_VIDEO` * `SENSITIVE_CATEGORY_LIVE_STREAMING_VIDEO`
              * @enum {string}
              */
             excludedSensitiveCategory: "SENSITIVE_CATEGORY_UNSPECIFIED" | "SENSITIVE_CATEGORY_ADULT" | "SENSITIVE_CATEGORY_DEROGATORY" | "SENSITIVE_CATEGORY_DOWNLOADS_SHARING" | "SENSITIVE_CATEGORY_WEAPONS" | "SENSITIVE_CATEGORY_GAMBLING" | "SENSITIVE_CATEGORY_VIOLENCE" | "SENSITIVE_CATEGORY_SUGGESTIVE" | "SENSITIVE_CATEGORY_PROFANITY" | "SENSITIVE_CATEGORY_ALCOHOL" | "SENSITIVE_CATEGORY_DRUGS" | "SENSITIVE_CATEGORY_TOBACCO" | "SENSITIVE_CATEGORY_POLITICS" | "SENSITIVE_CATEGORY_RELIGION" | "SENSITIVE_CATEGORY_TRAGEDY" | "SENSITIVE_CATEGORY_TRANSPORTATION_ACCIDENTS" | "SENSITIVE_CATEGORY_SENSITIVE_SOCIAL_ISSUES" | "SENSITIVE_CATEGORY_SHOCKING" | "SENSITIVE_CATEGORY_EMBEDDED_VIDEO" | "SENSITIVE_CATEGORY_LIVE_STREAMING_VIDEO";
@@ -2790,13 +2790,13 @@ export interface components {
              */
             targetCount?: string;
             /**
-             * @description The unit of time in which the target frequency will be applied. The following time unit is applicable: * `TIME_UNIT_WEEKS`
+             * @description The unit of time in which the target frequency will be applied. The following time unit is applicable: * `TIME_UNIT_WEEKS` * `TIME_UNIT_MONTHS`
              * @enum {string}
              */
             timeUnit?: "TIME_UNIT_UNSPECIFIED" | "TIME_UNIT_LIFETIME" | "TIME_UNIT_MONTHS" | "TIME_UNIT_WEEKS" | "TIME_UNIT_DAYS" | "TIME_UNIT_HOURS" | "TIME_UNIT_MINUTES";
             /**
              * Format: int32
-             * @description The number of time_unit the target frequency will last. The following restrictions apply based on the value of time_unit: * `TIME_UNIT_WEEKS` - must be 1
+             * @description The number of time_unit the target frequency will last. The following restrictions apply based on the value of time_unit: * `TIME_UNIT_WEEKS` - must be 1 * `TIME_UNIT_MONTHS` - must be 1
              */
             timeUnitCount?: number;
         };
@@ -2848,7 +2848,7 @@ export interface components {
              * @description The third-party measurement vendor.
              * @enum {string}
              */
-            vendor?: "THIRD_PARTY_VENDOR_UNSPECIFIED" | "THIRD_PARTY_VENDOR_MOAT" | "THIRD_PARTY_VENDOR_DOUBLE_VERIFY" | "THIRD_PARTY_VENDOR_INTEGRAL_AD_SCIENCE" | "THIRD_PARTY_VENDOR_COMSCORE" | "THIRD_PARTY_VENDOR_TELEMETRY" | "THIRD_PARTY_VENDOR_MEETRICS" | "THIRD_PARTY_VENDOR_ZEFR" | "THIRD_PARTY_VENDOR_NIELSEN" | "THIRD_PARTY_VENDOR_KANTAR" | "THIRD_PARTY_VENDOR_DYNATA" | "THIRD_PARTY_VENDOR_TRANSUNION" | "THIRD_PARTY_VENDOR_ORIGIN" | "THIRD_PARTY_VENDOR_GEMIUS" | "THIRD_PARTY_VENDOR_MEDIA_SCOPE" | "THIRD_PARTY_VENDOR_AUDIENCE_PROJECT" | "THIRD_PARTY_VENDOR_VIDEO_AMP" | "THIRD_PARTY_VENDOR_ISPOT_TV" | "THIRD_PARTY_VENDOR_INTAGE" | "THIRD_PARTY_VENDOR_MACROMILL" | "THIRD_PARTY_VENDOR_VIDEO_RESEARCH";
+            vendor?: "THIRD_PARTY_VENDOR_UNSPECIFIED" | "THIRD_PARTY_VENDOR_MOAT" | "THIRD_PARTY_VENDOR_DOUBLE_VERIFY" | "THIRD_PARTY_VENDOR_INTEGRAL_AD_SCIENCE" | "THIRD_PARTY_VENDOR_COMSCORE" | "THIRD_PARTY_VENDOR_TELEMETRY" | "THIRD_PARTY_VENDOR_MEETRICS" | "THIRD_PARTY_VENDOR_ZEFR" | "THIRD_PARTY_VENDOR_NIELSEN" | "THIRD_PARTY_VENDOR_KANTAR" | "THIRD_PARTY_VENDOR_DYNATA" | "THIRD_PARTY_VENDOR_TRANSUNION" | "THIRD_PARTY_VENDOR_ORIGIN" | "THIRD_PARTY_VENDOR_GEMIUS" | "THIRD_PARTY_VENDOR_MEDIA_SCOPE" | "THIRD_PARTY_VENDOR_AUDIENCE_PROJECT" | "THIRD_PARTY_VENDOR_VIDEO_AMP" | "THIRD_PARTY_VENDOR_ISPOT_TV" | "THIRD_PARTY_VENDOR_INTAGE" | "THIRD_PARTY_VENDOR_MACROMILL" | "THIRD_PARTY_VENDOR_VIDEO_RESEARCH" | "THIRD_PARTY_VENDOR_AQUILA";
         };
         /** @description Assigned third party verifier targeting option details. This will be populated in the details field of an AssignedTargetingOption when targeting_type is `TARGETING_TYPE_THIRD_PARTY_VERIFIER`. */
         ThirdPartyVerifierAssignedTargetingOptionDetails: {
@@ -3009,32 +3009,32 @@ export interface components {
         };
         /** @description Details for a video performance ad. */
         VideoPerformanceAd: {
-            /** @description The list of text assets shown on the call-to-action button. */
+            /** @description Optional. The list of text assets shown on the call-to-action button. */
             actionButtonLabels?: string[];
-            /** @description The list of companion banners used by this ad. */
+            /** @description Optional. The list of companion banners used by this ad. */
             companionBanners?: components["schemas"]["ImageAsset"][];
-            /** @description The custom parameters and accompanying values to add to the tracking URL. */
+            /** @description Optional. The custom parameters and accompanying values to add to the tracking URL. */
             customParameters?: {
                 [key: string]: string;
             };
-            /** @description The list of descriptions shown on the call-to-action banner. */
+            /** @description Optional. The list of descriptions shown on the call-to-action banner. */
             descriptions?: string[];
-            /** @description The first piece after the domain in the display URL. */
+            /** @description Optional. The first piece after the domain in the display URL. */
             displayUrlBreadcrumb1?: string;
-            /** @description The second piece after the domain in the display URL. */
+            /** @description Optional. The second piece after the domain in the display URL. */
             displayUrlBreadcrumb2?: string;
-            /** @description The domain of the display URL. */
+            /** @description Output only. The domain of the display URL. */
             domain?: string;
-            /** @description The URL address of the webpage that people reach after they click the ad. */
-            finalUrl?: string;
-            /** @description The list of headlines shown on the call-to-action banner. */
+            /** @description Required. The URL address of the webpage that people reach after they click the ad. */
+            finalUrl: string;
+            /** @description Optional. The list of headlines shown on the call-to-action banner. */
             headlines?: string[];
-            /** @description The list of long headlines shown on the call-to-action banner. */
+            /** @description Optional. The list of long headlines shown on the call-to-action banner. */
             longHeadlines?: string[];
-            /** @description The URL address loaded in the background for tracking purposes. */
+            /** @description Output only. The URL address loaded in the background for tracking purposes. */
             trackingUrl?: string;
-            /** @description The list of YouTube video assets used by this ad. */
-            videos?: components["schemas"]["YoutubeVideoDetails"][];
+            /** @description Required. The list of YouTube video assets used by this ad. */
+            videos: components["schemas"]["YoutubeVideoDetails"][];
         };
         /** @description Video player size targeting option details. This will be populated in the video_player_size_details field when targeting_type is `TARGETING_TYPE_VIDEO_PLAYER_SIZE`. Explicitly targeting all options is not supported. Remove all video player size targeting options to achieve this effect. */
         VideoPlayerSizeAssignedTargetingOptionDetails: {
@@ -3150,7 +3150,7 @@ export interface components {
             /** @description Output only. The YouTube video ID which can be searched on YouTube webpage. */
             id?: string;
             /**
-             * @description The reason why the video data is not available.
+             * @description Output only. The reason why the video data is not available.
              * @enum {string}
              */
             unavailableReason?: "VIDEO_UNAVAILABLE_REASON_UNSPECIFIED" | "VIDEO_UNAVAILABLE_REASON_PRIVATE" | "VIDEO_UNAVAILABLE_REASON_DELETED";
