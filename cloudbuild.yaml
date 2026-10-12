@@ -288,6 +288,7 @@ artifacts:
     paths:
       - 'terraform/tfplan'
 
-# Sized for the default pool's 2 vCPUs: billed per minute used, so headroom
-# costs nothing unless a build actually needs it.
-timeout: '3600s'
+# Sized for the default pool's 2 vCPUs: the first full run took 58m 42s
+# (build 910c1d51: test 21m, 13 images 29m, scan 6m). Billed per minute used,
+# so headroom costs nothing unless a build actually needs it.
+timeout: '5400s'
