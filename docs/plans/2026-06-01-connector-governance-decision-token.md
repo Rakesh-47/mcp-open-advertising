@@ -1,5 +1,7 @@
 # Connector Governance: Decision-Token Verification + Write-Contract Coverage — Implementation Plan
 
+> **Status (checked 2026-10-12):** Implemented (`verifyDecisionToken` in `packages/shared/src/governance/decision-token.ts`). Operations: `docs/governance/decision-token-rollout-and-rotation.md`.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Verify Intelligence-minted `X-Cesteral-Decision-Token` on every governed write `tools/call`, and expand `cesteral` contracts/structured responses to all 122 production write tools — warn-only first, enforce per-contract later.

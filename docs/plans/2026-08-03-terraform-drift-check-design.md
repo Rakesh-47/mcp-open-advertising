@@ -1,5 +1,7 @@
 # Design: scheduled Terraform state drift check
 
+> **Status (checked 2026-10-12):** Implemented (`scripts/check-terraform-drift.mjs`, `.github/workflows/terraform-drift.yml`).
+
 **Date:** 2026-08-03
 **Closes follow-up:** `docs/runbooks/2026-07-27-dev-fleet-lb-recovery.md` → "Terraform state drift is not monitored"
 

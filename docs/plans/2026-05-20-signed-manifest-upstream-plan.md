@@ -1,5 +1,7 @@
 # Signed-Manifest Upstream Support — Implementation Plan
 
+> **Status (checked 2026-10-12):** Implemented (`@cesteral/contract-hash`, `release.yml`, `scripts/generate-manifests.mjs`).
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Each code-bearing task follows @superpowers:test-driven-development.
 
 **Goal:** Publish a shared `@cesteral/contract-hash` package and add a tag-triggered `release.yml` that generates per-package `dist/cesteral-manifest.json` attestation manifests and publishes to npm with provenance.

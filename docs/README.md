@@ -79,7 +79,7 @@ These are point-in-time documents. They record why something was built or what a
 
 | Location                                                                                                           | What is there                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| [`plans/`](plans/)                                                                                                 | Dated design docs and implementation plans (`YYYY-MM-DD-topic.md`)                                               |
+| [`plans/`](plans/README.md)                                                                                        | Dated design docs and implementation plans (`YYYY-MM-DD-topic.md`)                                               |
 | [`reviews/2026-09-fleet-review/`](reviews/2026-09-fleet-review/README.md)                                          | September 2026 review of every server; [`STATUS.md`](reviews/2026-09-fleet-review/STATUS.md) tracks each finding |
 | [`reviews/governance-contract-producer-2026-06-17.md`](reviews/governance-contract-producer-2026-06-17.md)         | Producer-side review of the governance contract pipeline                                                         |
 | [`reviews/governance-protocol-adoptability-2026-10-09.md`](reviews/governance-protocol-adoptability-2026-10-09.md) | Review of how adoptable the governance protocol is outside Cesteral                                              |

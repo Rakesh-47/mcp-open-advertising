@@ -1,5 +1,7 @@
 # Dev Fleet First Deploy to Cloud Run — Implementation Plan
 
+> **Status (checked 2026-10-12):** Executed 2026-06-11; the checkboxes were not ticked back. Outcome: `2026-06-11-dev-fleet-deploy-results.md`.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Stand up the 13-server MCP fleet on GCP Cloud Run in

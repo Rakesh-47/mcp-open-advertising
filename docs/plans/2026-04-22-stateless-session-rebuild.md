@@ -1,5 +1,7 @@
 # Stateless Session Rebuild Implementation Plan
 
+> **Status (checked 2026-10-12):** Implemented (the transport factory rebuilds session services on a cache miss). One post-merge production check, on `mcp_session_rehydrated_total`, was never ticked.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Make MCP session services transparently rehydrate on any Cloud Run instance so sessions survive horizontal scale-out without requiring sticky routing.

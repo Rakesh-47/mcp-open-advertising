@@ -1,7 +1,7 @@
 # Reporting Consistency & Improvement — Design
 
 **Date:** 2026-04-16
-**Status:** Approved, awaiting implementation plan
+**Status (checked 2026-10-12):** Implemented; the plan is `2026-04-16-reporting-consistency.md`.
 **Scope:** All 12 reporting-capable MCP servers (treating `dbm-mcp` as DV360's reporting server)
 
 ## Background
