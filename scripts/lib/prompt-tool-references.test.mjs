@@ -27,27 +27,18 @@ import { describe, expect, it } from "vitest";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { withServerClient, listRawTools, ROOT } from "./boot-server.mjs";
+import { registryPrefixes } from "../../evals/lib/merged-catalog.mjs";
 
 const packages = readdirSync(join(ROOT, "packages"))
   .filter((p) => p.endsWith("-mcp"))
   .sort();
 
-/** Tool-name prefixes in use. The prefix invariant is ratcheted in evals/lib/merged-catalog.mjs. */
-export const TOOL_PREFIXES = [
-  "amazon_dsp",
-  "cm360",
-  "dbm",
-  "dv360",
-  "gads",
-  "linkedin",
-  "meta",
-  "msads",
-  "pinterest",
-  "sa360",
-  "snapchat",
-  "tiktok",
-  "ttd",
-];
+/**
+ * Tool-name prefixes in use, derived from registry.json so a new server's
+ * prompts are checked from its first commit. The prefix invariant itself is
+ * ratcheted in evals/lib/merged-catalog.mjs.
+ */
+export const TOOL_PREFIXES = [...registryPrefixes().values()].filter(Boolean).sort();
 
 const TOOL_TOKEN = new RegExp(`\\b(?:${TOOL_PREFIXES.join("|")})_[a-z0-9_]+\\b`, "g");
 

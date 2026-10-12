@@ -17,9 +17,7 @@
 
 ## Checklist
 
-- [ ] `pnpm run build` passes
-- [ ] `pnpm run typecheck` passes
-- [ ] `pnpm run test` passes
+- [ ] `corepack pnpm ci:local` passes (list any job it reported as NOT RUN)
 - [ ] New functionality includes tests
 - [ ] No secrets in diff
 - [ ] Follows existing patterns
