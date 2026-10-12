@@ -1,13 +1,23 @@
 # Cloud Build configuration for Cesteral MCP Servers
-# Automated CI/CD pipeline: test -> build -> scan -> push -> terraform -> health checks
+# Pipeline: test -> build -> scan -> push, then (only with _DEPLOY=true)
+# terraform plan -> apply -> health checks.
 
 substitutions:
   _ENVIRONMENT: 'dev'
   _REGION: 'europe-west2'
   _ARTIFACT_REGISTRY_REPO: 'cesteral'
+  # Build-only by default: deploys run from scripts/deploy.sh under a person's
+  # credentials. Setting this to 'true' needs a build service account that can
+  # plan and apply this stack, including project IAM bindings, which is
+  # effectively Owner. The default compute service account has only
+  # roles/cloudbuild.builds.builder. Validate and tflint still run, against
+  # `terraform init -backend=false`, so a build-only run needs no gitignored
+  # backend config or tfvars.
+  _DEPLOY: 'false'
   # Safety interlock: prod infrastructure is never mutated by an automated build
   # unless this is explicitly set to 'true' (intended to be paired with a
-  # trigger-level approval gate). Non-prod environments apply automatically.
+  # trigger-level approval gate). Non-prod environments apply automatically
+  # when _DEPLOY is 'true'.
   _CONFIRM_PROD_APPLY: 'false'
 
 options:
@@ -122,8 +132,15 @@ steps:
     args:
       - '-c'
       - |
+        set -eu
         cd terraform
-        terraform init -backend-config=backend-${_ENVIRONMENT}.conf -reconfigure
+        if [ "${_DEPLOY}" = "true" ]; then
+          terraform init -backend-config=backend-${_ENVIRONMENT}.conf -reconfigure
+        else
+          # validate and tflint need providers and modules, not state, so a
+          # build-only run needs no backend config (it is gitignored).
+          terraform init -backend=false
+        fi
     id: 'terraform-init'
     waitFor: ['push-images']
 
@@ -153,6 +170,10 @@ steps:
     args:
       - '-c'
       - |
+        if [ "${_DEPLOY}" != "true" ]; then
+          echo "Skipping terraform plan: _DEPLOY is not 'true' (build-only)."
+          exit 0
+        fi
         cd terraform
         # Deploy by immutable digest (resolved in push-images) rather than the
         # mutable :SHORT_SHA tag. Write the mcp_images map (keyed by package)
@@ -182,6 +203,22 @@ steps:
     id: 'terraform-plan'
     waitFor: ['terraform-validate', 'tflint']
 
+  # Saves the plan for review. A step rather than an `artifacts:` block,
+  # because a build with an artifact path that matches no file fails, and a
+  # build-only run writes no plan.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        if [ "${_DEPLOY}" != "true" ]; then
+          echo "Skipping plan upload: _DEPLOY is not 'true' (build-only)."
+          exit 0
+        fi
+        gcloud storage cp terraform/tfplan "gs://${PROJECT_ID}-build-artifacts/${_ENVIRONMENT}/${BUILD_ID}/tfplan"
+    id: 'upload-plan'
+    waitFor: ['terraform-plan']
+
   # Production must not be mutated by the automated pipeline without a human in
   # the loop. This step stops after the reviewed plan (uploaded as a build
   # artifact) unless _CONFIRM_PROD_APPLY=true — promote prod via a separate
@@ -193,6 +230,10 @@ steps:
     args:
       - '-c'
       - |
+        if [ "${_DEPLOY}" != "true" ]; then
+          echo "Skipping terraform apply: _DEPLOY is not 'true' (build-only)."
+          exit 0
+        fi
         cd terraform
         if [ "${_ENVIRONMENT}" = "prod" ] && [ "${_CONFIRM_PROD_APPLY}" != "true" ]; then
           echo "Skipping terraform apply for prod: _CONFIRM_PROD_APPLY is not 'true'."
@@ -202,7 +243,7 @@ steps:
         fi
         terraform apply -auto-approve tfplan
     id: 'terraform-apply'
-    waitFor: ['terraform-plan']
+    waitFor: ['upload-plan']
 
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
@@ -210,6 +251,10 @@ steps:
       - '-c'
       - |
         set -euo pipefail
+        if [ "${_DEPLOY}" != "true" ]; then
+          echo "Skipping health checks: _DEPLOY is not 'true' (build-only)."
+          exit 0
+        fi
         FAILED_SERVICES=""
         SERVICES="$$(cat /workspace/.fleet-services)"
         [ -n "$$SERVICES" ] || { echo "empty /workspace/.fleet-services" >&2; exit 1; }
@@ -282,11 +327,6 @@ images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/msads-mcp:${SHORT_SHA}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/msads-mcp:${_ENVIRONMENT}-latest'
 
-artifacts:
-  objects:
-    location: 'gs://${PROJECT_ID}-build-artifacts/${_ENVIRONMENT}/${BUILD_ID}'
-    paths:
-      - 'terraform/tfplan'
 
 # Sized for the default pool's 2 vCPUs: the first full run took 58m 42s
 # (build 910c1d51: test 21m, 13 images 29m, scan 6m). Billed per minute used,
