@@ -33,7 +33,7 @@
 // drift. It is intentionally dumb: it does not know what a canonicalization is,
 // only that these two packages' source and version move together.
 //
-// Usage: node scripts/check-contract-version-bump.mjs [--base <ref>]
+// Usage: node scripts/check/check-contract-version-bump.mjs [--base <ref>]
 //   --base defaults to $GITHUB_BASE_REF (set on pull_request), else origin/main.
 
 import { spawnSync } from "node:child_process";
@@ -142,13 +142,7 @@ function main() {
 
   const packages = CONTRACT_PACKAGES.map((name) => {
     const dir = `packages/${name}`;
-    const changed = git([
-      "diff",
-      "--name-only",
-      `${mergeBase}..HEAD`,
-      "--",
-      `${dir}/src`,
-    ]).trim();
+    const changed = git(["diff", "--name-only", `${mergeBase}..HEAD`, "--", `${dir}/src`]).trim();
 
     const basePkg = readJsonAtRef(mergeBase, `${dir}/package.json`);
     const headPkg = readJsonAtRef("HEAD", `${dir}/package.json`);
@@ -164,9 +158,7 @@ function main() {
       // Only ask npm when the answer can change the outcome — keeps the job
       // network-free on the overwhelmingly common no-contract-change PR.
       headVersionPublished:
-        srcChanged && headVersion !== null
-          ? isPublished(`@cesteral/${name}`, headVersion)
-          : false,
+        srcChanged && headVersion !== null ? isPublished(`@cesteral/${name}`, headVersion) : false,
       changedFiles: changed ? changed.split("\n") : [],
     };
   });

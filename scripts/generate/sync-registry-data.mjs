@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..");
+const ROOT = join(__dirname, "..", "..");
 const REGISTRY_PATH = join(ROOT, "registry.json");
 const OUT_PATH = join(ROOT, "packages/shared/src/utils/registry-data.generated.ts");
 
@@ -48,7 +48,7 @@ const slim = {
   })),
 };
 
-const banner = `// AUTO-GENERATED from registry.json by scripts/sync-registry-data.mjs.
+const banner = `// AUTO-GENERATED from registry.json by scripts/generate/sync-registry-data.mjs.
 // Do not edit by hand — re-run \`pnpm sync-registry-data\` after editing registry.json.
 `;
 

@@ -168,7 +168,7 @@ gone — a security regression, not a successful recovery.
   — days later, during unrelated work.
 - ~~**Terraform state drift is not monitored.**~~ **Closed 2026-08-03.** State
   claimed 35 LB resources and 8 networking resources that no longer existed.
-  `scripts/check-terraform-drift.mjs` + `.github/workflows/terraform-drift.yml`
+  `scripts/check/check-terraform-drift.mjs` + `.github/workflows/terraform-drift.yml`
   now plan daily and alert on divergence. See the section below for what it does
   and does not catch, and `docs/plans/2026-08-03-terraform-drift-check-design.md`
   for the reasoning.

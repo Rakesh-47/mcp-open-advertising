@@ -16,10 +16,10 @@
 
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT, withServerClient, listRawTools } from "./lib/boot-server.mjs";
-import { toManifestEntry, validateManifest } from "./lib/manifest.mjs";
-import { assertManifestCoverage } from "./lib/governed-packages.mjs";
-import { loadLedger, assertVerificationBinding } from "./lib/verification-ledger.mjs";
+import { ROOT, withServerClient, listRawTools } from "../lib/boot-server.mjs";
+import { toManifestEntry, validateManifest } from "../lib/manifest.mjs";
+import { assertManifestCoverage } from "../lib/governed-packages.mjs";
+import { loadLedger, assertVerificationBinding } from "../lib/verification-ledger.mjs";
 
 const REGISTRY = JSON.parse(readFileSync(join(ROOT, "registry.json"), "utf-8"));
 

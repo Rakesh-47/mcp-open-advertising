@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { compareAnnotationSchemas } from "../check-contract-schema-published-parity.mjs";
+import { compareAnnotationSchemas } from "../check/check-contract-schema-published-parity.mjs";
 
 /**
  * Unit tests for the pure comparison core of the contract-schema release parity

@@ -1,4 +1,4 @@
-// AUTO-GENERATED from registry.json by scripts/sync-registry-data.mjs.
+// AUTO-GENERATED from registry.json by scripts/generate/sync-registry-data.mjs.
 // Do not edit by hand — re-run `pnpm sync-registry-data` after editing registry.json.
 
 export interface RegistryServerEntry {

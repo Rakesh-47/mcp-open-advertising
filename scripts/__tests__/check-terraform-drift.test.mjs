@@ -13,7 +13,7 @@ import {
   EXIT_OK,
   EXIT_DRIFT,
   EXIT_CANNOT_CHECK,
-} from "../check-terraform-drift.mjs";
+} from "../check/check-terraform-drift.mjs";
 
 /**
  * Unit tests for the Terraform drift checker (runbook

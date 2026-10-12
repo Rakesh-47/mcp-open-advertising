@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   evaluateContractVersionBump,
   CONTRACT_PACKAGES,
-} from "../check-contract-version-bump.mjs";
+} from "../check/check-contract-version-bump.mjs";
 
 /**
  * Unit tests for the pure core of the contract-library version-bump guard

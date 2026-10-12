@@ -40,7 +40,7 @@ import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const TERRAFORM_DIR = path.join(REPO_ROOT, "terraform");
 const TERRAFORM_DIR_REL = "terraform";
 

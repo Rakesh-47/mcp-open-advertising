@@ -60,7 +60,7 @@ jobs:
       # reviewed commit that says why. Being unable to check is not a reason.
       # Not in the contract lane: neither contract library relies on a platform fact.
       - name: Platform facts are current
-        run: node scripts/check-platform-facts.mjs --freshness
+        run: node scripts/check/check-platform-facts.mjs --freshness
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -85,7 +85,7 @@ jobs:
       # silently de-attesting the fleet. Not-yet-published versions pass (this
       # release publishes them; governance bumps its pin in lockstep).
       - name: Contract-hash published parity
-        run: node scripts/check-contract-hash-published-parity.mjs
+        run: node scripts/check/check-contract-hash-published-parity.mjs
 
       # Issue #171: the same seam on the other contract package. The release
       # gate (scripts/lib/manifest.mjs) validates with the WORKSPACE annotation
@@ -94,7 +94,7 @@ jobs:
       # can reach `attested`" true. An in-place schema edit without a version
       # bump makes it false in the dangerous direction — a looser admission side.
       - name: Contract-schema published parity
-        run: node scripts/check-contract-schema-published-parity.mjs
+        run: node scripts/check/check-contract-schema-published-parity.mjs
 
       - name: Install mcp-publisher
         run: |
@@ -155,10 +155,10 @@ jobs:
       # Both parity guards run before publish, same as the fleet lane. A version
       # not yet on npm passes by design — this release is what publishes it.
       - name: Contract-hash published parity
-        run: node scripts/check-contract-hash-published-parity.mjs
+        run: node scripts/check/check-contract-hash-published-parity.mjs
 
       - name: Contract-schema published parity
-        run: node scripts/check-contract-schema-published-parity.mjs
+        run: node scripts/check/check-contract-schema-published-parity.mjs
 
       - name: Publish contract libraries (npm with provenance)
         run: ./scripts/publish-all.sh --provenance --contracts-only

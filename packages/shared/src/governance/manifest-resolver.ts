@@ -20,7 +20,7 @@ export interface ManifestEntryRef {
 /**
  * Load the published per-package attestation manifest and index its tools by
  * name → {@link ManifestEntryRef}. The manifest (`dist/cesteral-manifest.json`,
- * produced by `scripts/generate-manifests.mjs`) is the SAME artifact governance
+ * produced by `scripts/generate/generate-manifests.mjs`) is the SAME artifact governance
  * reads when minting decision tokens, so resolving the expected `definitionHash`
  * from it guarantees byte-parity with the token claim.
  *

@@ -6,7 +6,7 @@
  * This keeps the rich registry metadata aligned with registered tool sources
  * without requiring developers to hand-count or manually chase renamed tools.
  *
- * Usage: node scripts/sync-registry-tools.mjs [--check]
+ * Usage: node scripts/generate/sync-registry-tools.mjs [--check]
  *   --check   Validate registry.json tool lists match source definitions.
  */
 
@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..");
+const ROOT = join(__dirname, "..", "..");
 const REGISTRY_PATH = join(ROOT, "registry.json");
 
 function loadRegistry() {
