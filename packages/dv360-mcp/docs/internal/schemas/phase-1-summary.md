@@ -422,7 +422,7 @@ operationDiscovery: {
 
 ## 📖 References
 
-- [OpenAPI Schema Extraction Specification](./openapi-schema-extraction-spec.md) - Full specification
+- [OpenAPI Schema Extraction Specification](../../openapi-schema-extraction-spec.md) - Full specification
 - [Phase 1 Implementation Checklist](./phase-1-implementation-checklist.md) - Detailed task breakdown
 - [DV360 API Reference](https://developers.google.com/display-video/api/reference/rest) - Official API docs
 - [OpenAPI 3.0 Specification](https://spec.openapis.org/oas/v3.0.0) - OpenAPI standard
