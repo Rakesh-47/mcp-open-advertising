@@ -11,9 +11,10 @@
  * - Real-write before/after (PR-D): read pre-state at handler start, execute
  *   the write, normalize the patched resource that DV360 returns.
  *
- * The canonical shape covers status, budget segments (micros → minor units),
- * and basic flight schedule. Other DV360 entity types (creatives, ad groups)
- * fall outside round 1.
+ * The canonical shape covers status, budget (an insertion order's segments, a
+ * line item's fixed `maxAmount`; micros → ISO 4217 minor units of the
+ * advertiser's currency), and basic flight schedule. Other DV360 entity types
+ * (creatives, ad groups) fall outside round 1.
  */
 
 import type {
@@ -29,13 +30,46 @@ export interface Dv360ServiceLike {
     ids: Record<string, string>,
     context?: RequestContext
   ) => Promise<unknown>;
+  /** ISO 4217 currency of the advertiser (`DV360Service.getAdvertiserCurrency`). */
+  getAdvertiserCurrency?: (advertiserId: string, context?: RequestContext) => Promise<string>;
 }
+
+/**
+ * ISO 4217 "no currency involved" code, used when the advertiser's currency
+ * cannot be read, so a snapshot never claims a currency it does not know.
+ */
+export const DV360_UNKNOWN_CURRENCY = "XXX";
 
 export const ENTITY_KIND_MAP: Record<string, CanonicalEntityKind> = {
   campaign: "campaign",
   insertionOrder: "insertion_order",
   lineItem: "line_item",
 };
+
+/**
+ * The advertiser's currency for snapshots of `entityType`: every DV360 money
+ * amount is micros of it, and neither the line item nor the insertion order
+ * carries it. Degrades to DV360_UNKNOWN_CURRENCY when the service cannot
+ * provide it, rather than failing the write or dry run the snapshot belongs
+ * to. Reads nothing for a type with no canonical snapshot.
+ */
+export async function resolveDv360Currency(
+  service: Dv360ServiceLike,
+  entityType: string,
+  ids: Record<string, string>,
+  context?: RequestContext
+): Promise<string> {
+  const advertiserId = ids.advertiserId;
+  if (!ENTITY_KIND_MAP[entityType] || !advertiserId || !service.getAdvertiserCurrency) {
+    return DV360_UNKNOWN_CURRENCY;
+  }
+  try {
+    const code = await service.getAdvertiserCurrency(advertiserId, context);
+    return /^[A-Z]{3}$/.test(code) ? code : DV360_UNKNOWN_CURRENCY;
+  } catch {
+    return DV360_UNKNOWN_CURRENCY;
+  }
+}
 
 const STATUS_MAP: Record<string, CanonicalStatus> = {
   ENTITY_STATUS_ACTIVE: "active",
@@ -51,23 +85,71 @@ function normalizeStatus(raw: unknown): { canonical: CanonicalStatus; platformRa
   return { canonical: STATUS_MAP[platformRaw] ?? "unknown", platformRaw };
 }
 
-function microsToMinor(micros: unknown): number | undefined {
-  if (micros == null) return undefined;
-  const n = typeof micros === "string" ? Number(micros) : Number(micros);
-  if (!Number.isFinite(n)) return undefined;
-  // micros → minor units (cents). 1,000,000 micros = $1.00 = 100 cents.
-  return Math.round(n / 10000);
+/**
+ * ISO 4217 minor-unit exponent for `currency` (USD 2, JPY 0, KWD 3), read from
+ * the runtime's ICU currency data. Falls back to 2 for codes ICU does not know
+ * (including DV360_UNKNOWN_CURRENCY).
+ */
+function currencyExponent(currency: string): number {
+  if (currency === DV360_UNKNOWN_CURRENCY) return 2;
+  try {
+    const digits = new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
+      .maximumFractionDigits;
+    return typeof digits === "number" ? digits : 2;
+  } catch {
+    return 2;
+  }
+}
+
+/**
+ * Micros of the advertiser currency → its minor units. 1,000,000 micros is one
+ * major unit: $1.00 = 100 cents, but ¥1 = 1 minor unit (JPY has none smaller).
+ * Only a non-negative integer counts: an int64 arrives as a digit string.
+ */
+function microsToMinor(micros: unknown, currency: string): number | undefined {
+  if (typeof micros !== "string" && typeof micros !== "number") return undefined;
+  const n = typeof micros === "string" ? (/^\d+$/.test(micros) ? Number(micros) : NaN) : micros;
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  const minor = Math.round(n / 10 ** (6 - currencyExponent(currency)));
+  return Number.isSafeInteger(minor) ? minor : undefined;
+}
+
+/**
+ * A line item's lifetime budget: a FIXED allocation in currency carries its
+ * cap in `budget.maxAmount`, micros of the advertiser's currency (v4 Discovery
+ * `LineItemBudget.maxAmount`). Everything else has no fixed currency amount, so
+ * the lifetime stays null rather than reading as 0:
+ * - UNLIMITED: "this field is not applicable and will be ignored by the system",
+ *   so a stale value may still be echoed back;
+ * - AUTOMATIC: "immutable and is set by the system", not a cap anyone fixed;
+ * - BUDGET_UNIT_IMPRESSIONS: `maxAmount` is a number of impressions.
+ */
+function lineItemLifetime(
+  budget: Record<string, unknown> | undefined,
+  currency: string
+): { amountMinor: number; currency: string } | null {
+  if (
+    budget?.budgetAllocationType !== "LINE_ITEM_BUDGET_ALLOCATION_TYPE_FIXED" ||
+    budget?.budgetUnit !== "BUDGET_UNIT_CURRENCY"
+  ) {
+    return null;
+  }
+  const amountMinor = microsToMinor(budget.maxAmount, currency);
+  return amountMinor == null ? null : { amountMinor, currency };
 }
 
 /**
  * Pure builder. `applied` is the entity post-overlay (or post-write); `current`
  * is only used for status fallback when `applied.entityStatus` is missing.
+ * `currency` is the advertiser's ISO 4217 code (`resolveDv360Currency`): DV360
+ * amounts are micros of it, which the entity itself does not carry.
  */
 export function buildDv360Snapshot(
   entityType: string,
   ids: Record<string, string>,
   current: Record<string, unknown>,
-  applied: Record<string, unknown>
+  applied: Record<string, unknown>,
+  currency: string
 ): NormalizedEntitySnapshot | null {
   const entityKind = ENTITY_KIND_MAP[entityType];
   if (!entityKind) return null;
@@ -76,8 +158,6 @@ export function buildDv360Snapshot(
     ids.lineItemId ?? ids.insertionOrderId ?? ids.campaignId ?? ids.advertiserId ?? "";
 
   const merged = applied as Record<string, any>;
-  // currency isn't carried on the entity directly; advertiser scope. Default to USD for round-1.
-  const currency = "USD";
 
   const segments: Array<{
     amountMinor: number;
@@ -88,7 +168,7 @@ export function buildDv360Snapshot(
   const segArr = merged?.budget?.budgetSegments;
   if (Array.isArray(segArr)) {
     for (const seg of segArr) {
-      const amountMinor = microsToMinor(seg?.budgetAmountMicros);
+      const amountMinor = microsToMinor(seg?.budgetAmountMicros, currency);
       if (amountMinor == null) continue;
       const start = seg?.dateRange?.startDate;
       const end = seg?.dateRange?.endDate;
@@ -116,7 +196,12 @@ export function buildDv360Snapshot(
     status: normalizeStatus(merged.entityStatus ?? (current as any).entityStatus),
     budget: {
       daily: null,
-      lifetime: lifetimeMinor > 0 ? { amountMinor: lifetimeMinor, currency } : null,
+      lifetime:
+        entityKind === "line_item"
+          ? lineItemLifetime(merged?.budget, currency)
+          : lifetimeMinor > 0
+            ? { amountMinor: lifetimeMinor, currency }
+            : null,
       segments: segments.length > 0 ? segments : null,
     },
     schedule: {
@@ -148,7 +233,8 @@ export async function captureDv360Snapshot(
       unknown
     >;
     if (!current || typeof current !== "object") return undefined;
-    const snapshot = buildDv360Snapshot(entityType, ids, current, current);
+    const currency = await resolveDv360Currency(dv360Service, entityType, ids, context);
+    const snapshot = buildDv360Snapshot(entityType, ids, current, current, currency);
     return snapshot ?? undefined;
   } catch {
     return undefined;
@@ -164,11 +250,13 @@ export async function captureDv360Snapshot(
  * the patched resource in full, but if the SDK shape is unexpected (e.g. an
  * empty `{}` or a wrapped envelope), callers should fall back to a re-read
  * rather than emit a snapshot with `status: unknown` derived from absent data.
+ * `currency` is the advertiser's (`resolveDv360Currency`).
  */
 export function snapshotFromDv360Entity(
   entityType: string,
   ids: Record<string, string>,
-  entity: Record<string, unknown>
+  entity: Record<string, unknown>,
+  currency: string
 ): NormalizedEntitySnapshot | undefined {
   if (!ENTITY_KIND_MAP[entityType]) return undefined;
   if (
@@ -177,6 +265,6 @@ export function snapshotFromDv360Entity(
   ) {
     return undefined;
   }
-  const snapshot = buildDv360Snapshot(entityType, ids, entity, entity);
+  const snapshot = buildDv360Snapshot(entityType, ids, entity, entity, currency);
   return snapshot ?? undefined;
 }

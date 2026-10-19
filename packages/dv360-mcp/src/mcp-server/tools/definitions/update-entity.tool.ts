@@ -16,7 +16,11 @@ import {
 } from "../utils/entity-examples.js";
 import { addIdValidationIssues, mergeIdsIntoData } from "../utils/parent-id-validation.js";
 import { runDv360UpdateDryRun, resolveDv360DispatchedCapability } from "../utils/dry-run.js";
-import { snapshotFromDv360Entity, captureDv360Snapshot } from "../utils/capture-snapshot.js";
+import {
+  snapshotFromDv360Entity,
+  captureDv360Snapshot,
+  resolveDv360Currency,
+} from "../utils/capture-snapshot.js";
 import {
   createLogger,
   DryRunResultSchema,
@@ -183,7 +187,20 @@ export async function updateEntityLogic(
     }
     // PR-D: normalize pre-state from the same `current` we already read for
     // previousValues — no extra round-trip.
-    const before = snapshotFromDv360Entity(validatedInput.entityType, entityIds, current ?? {});
+    // The advertiser's currency denominates both snapshots' amounts; one read
+    // per advertiser and session, shared by `before` and `after`.
+    const currency = await resolveDv360Currency(
+      dv360Service,
+      validatedInput.entityType,
+      entityIds,
+      context
+    );
+    const before = snapshotFromDv360Entity(
+      validatedInput.entityType,
+      entityIds,
+      current ?? {},
+      currency
+    );
 
     const updated = await dv360Service.updateEntity(
       validatedInput.entityType,
@@ -212,7 +229,8 @@ export async function updateEntityLogic(
     let after = snapshotFromDv360Entity(
       validatedInput.entityType,
       entityIds,
-      (updated as Record<string, unknown>) ?? {}
+      (updated as Record<string, unknown>) ?? {},
+      currency
     );
     if (!after) {
       after = await captureDv360Snapshot(

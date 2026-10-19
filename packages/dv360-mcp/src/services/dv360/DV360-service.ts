@@ -376,6 +376,40 @@ export class DV360Service {
     });
   }
 
+  /** Advertiser currency reads, one per advertiser per session. */
+  private readonly advertiserCurrencies = new Map<string, Promise<string>>();
+
+  /**
+   * The advertiser's ISO 4217 currency code, which every micros amount on that
+   * advertiser's entities is denominated in (a line item's `budget.maxAmount`,
+   * an insertion order's `budgetAmountMicros`). Read once per advertiser and
+   * kept for the session; a failed read is not kept, so the next call retries.
+   *
+   * basis: `Advertiser.generalConfig.currencyCode` ("Required. Immutable.
+   * Advertiser's currency in ISO 4217 format."), v4 Discovery
+   * `schemas.AdvertiserGeneralConfig`, vendored in `src/generated/schemas`.
+   * Immutable, so one read per advertiser is enough. Read with
+   * `advertisers.get` (`getEntity("advertiser")`).
+   */
+  getAdvertiserCurrency(advertiserId: string, context?: RequestContext): Promise<string> {
+    const cached = this.advertiserCurrencies.get(advertiserId);
+    if (cached) return cached;
+    const pending = this.getEntity("advertiser", { advertiserId }, context).then((advertiser) => {
+      const code = (advertiser as { generalConfig?: { currencyCode?: unknown } } | undefined)
+        ?.generalConfig?.currencyCode;
+      if (typeof code !== "string" || code.length === 0) {
+        throw new McpError(
+          JsonRpcErrorCode.InternalError,
+          `DV360 returned no generalConfig.currencyCode for advertiser ${advertiserId}`
+        );
+      }
+      return code;
+    });
+    this.advertiserCurrencies.set(advertiserId, pending);
+    pending.catch(() => this.advertiserCurrencies.delete(advertiserId));
+    return pending;
+  }
+
   /**
    * Get single entity by ID
    */

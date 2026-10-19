@@ -164,6 +164,24 @@ const INSERTION_ORDER = {
   optimizationObjective: "NO_OBJECTIVE",
 };
 
+/**
+ * The advertiser as `advertisers.get` returns it. Governed writes read it once
+ * per advertiser and session for `generalConfig.currencyCode`, the currency
+ * their before/after snapshot amounts are denominated in (#298).
+ */
+const ADVERTISER = {
+  name: `advertisers/${ADV}`,
+  advertiserId: ADV,
+  partnerId: "7",
+  displayName: "Wire Advertiser",
+  entityStatus: "ENTITY_STATUS_ACTIVE",
+  updateTime: "2026-09-01T00:00:00Z",
+  adServerConfig: { thirdPartyOnlyConfig: {} },
+  billingConfig: { billingProfileId: "55" },
+  creativeConfig: {},
+  generalConfig: { currencyCode: "USD", domainUrl: "https://example.com", timeZone: "Etc/UTC" },
+};
+
 function lineItem(id: string, overrides: Record<string, unknown> = {}) {
   return {
     name: `advertisers/${ADV}/lineItems/${id}`,
@@ -197,7 +215,9 @@ let session: WireSession;
 let sdk: ReturnType<typeof acceptingSdkContext>;
 
 beforeEach(async () => {
-  stub = installFetchStub();
+  stub = installFetchStub([
+    { method: "GET", path: `/v4/advertisers/${ADV}`, response: ADVERTISER },
+  ]);
   session = await createWireSession();
   sdk = acceptingSdkContext(session.sessionId);
 });
@@ -399,8 +419,13 @@ describe("dv360_update_entity → advertisers.<collection>.patch", () => {
     expectJsonAuth(req);
     expect(req.body).toEqual({ ...current, displayName: "LI renamed" });
     expect(out.previousValues).toEqual({ displayName: "LI 222" });
-    // One GET (the tool's pre-read, passed through — no second GET) + one PATCH.
-    expect(apiRequests().map((r) => r.method)).toEqual(["GET", "PATCH"]);
+    // The tool's pre-read (passed through — no second GET of the line item), the
+    // advertiser's currency for the before/after snapshots, and one PATCH.
+    expect(apiRequests().map((r) => `${r.method} ${r.url}`)).toEqual([
+      `GET ${API}/advertisers/${ADV}/lineItems/222`,
+      `GET ${API}/advertisers/${ADV}`,
+      `PATCH ${API}/advertisers/${ADV}/lineItems/222?updateMask=displayName`,
+    ]);
     expectOneTokenPerApiCall();
   });
 
@@ -1597,6 +1622,8 @@ describe("dv360_duplicate_entity", () => {
       `POST ${API}/advertisers/${ADV}/lineItems/222:duplicate`,
       `GET ${API}/advertisers/${ADV}/lineItems/999`,
       `PATCH ${API}/advertisers/${ADV}/lineItems/999?updateMask=entityStatus`,
+      // The advertiser's currency, for the copy's `after` snapshot.
+      `GET ${API}/advertisers/${ADV}`,
     ]);
     const [dup, patch] = writes();
     // basis: `advertisers.lineItems.duplicate` — POST
