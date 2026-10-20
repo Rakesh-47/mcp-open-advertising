@@ -10,10 +10,17 @@ import { extractEntitiesFromListResponse } from "./entity-response-parser.js";
 import { withDV360ApiSpan } from "../../utils/platform.js";
 import { setSpanAttribute } from "@cesteral/shared";
 import { type RequestContext, executeBulkConcurrent } from "@cesteral/shared";
-import { DV360HttpClient } from "./dv360-http-client.js";
+import { DV360HttpClient, DV360_CURRENCY_LOOKUP_RETRY } from "./dv360-http-client.js";
 import type { BulkCapacityCheck } from "@cesteral/shared";
 import { dv360BulkCapacityChecks } from "./bulk-capacity-checks.js";
 import { consumeDv360Quota } from "./rate-limit-keys.js";
+
+/**
+ * How long a failed advertiser currency lookup is remembered. Long enough that
+ * an outage is not paid for again by every governed write, short enough that a
+ * recovered advertiser resolves on the next minute's write.
+ */
+const CURRENCY_FAILURE_MEMORY_MS = 60_000;
 
 // ============================================================================
 // Response Validation
@@ -376,26 +383,67 @@ export class DV360Service {
     });
   }
 
-  /** Advertiser currency reads, one per advertiser per session. */
-  private readonly advertiserCurrencies = new Map<string, Promise<string>>();
+  /**
+   * Advertiser currency lookups. A resolved code is kept for the session (it is
+   * immutable); a failure is kept for {@link CURRENCY_FAILURE_MEMORY_MS}.
+   */
+  private readonly advertiserCurrencies = new Map<
+    string,
+    { promise: Promise<string>; failedAt?: number }
+  >();
 
   /**
    * The advertiser's ISO 4217 currency code, which every micros amount on that
    * advertiser's entities is denominated in (a line item's `budget.maxAmount`,
-   * an insertion order's `budgetAmountMicros`). Read once per advertiser and
-   * kept for the session; a failed read is not kept, so the next call retries.
+   * an insertion order's `budgetAmountMicros`).
+   *
+   * One lookup per advertiser, shared by concurrent callers and bounded
+   * ({@link DV360_CURRENCY_LOOKUP_RETRY}). A resolved code is kept for the
+   * session. A failure is remembered for a short window, during which callers
+   * get the same rejection without a request, so an outage costs one bounded
+   * lookup per window rather than one per governed write, and the currency a
+   * snapshot reports does not flip between the real code and "unknown" write
+   * to write. After the window the next call asks again; nothing is carried
+   * over from a failure.
    *
    * basis: `Advertiser.generalConfig.currencyCode` ("Required. Immutable.
    * Advertiser's currency in ISO 4217 format."), v4 Discovery
    * `schemas.AdvertiserGeneralConfig`, vendored in `src/generated/schemas`.
-   * Immutable, so one read per advertiser is enough. Read with
-   * `advertisers.get` (`getEntity("advertiser")`).
+   * Read with `advertisers.get` (GET `v4/advertisers/{advertisersId}`).
    */
   getAdvertiserCurrency(advertiserId: string, context?: RequestContext): Promise<string> {
-    const cached = this.advertiserCurrencies.get(advertiserId);
-    if (cached) return cached;
-    const pending = this.getEntity("advertiser", { advertiserId }, context).then((advertiser) => {
-      const code = (advertiser as { generalConfig?: { currencyCode?: unknown } } | undefined)
+    const entry = this.advertiserCurrencies.get(advertiserId);
+    if (entry) {
+      if (
+        entry.failedAt === undefined ||
+        Date.now() - entry.failedAt < CURRENCY_FAILURE_MEMORY_MS
+      ) {
+        return entry.promise;
+      }
+      this.advertiserCurrencies.delete(advertiserId);
+    }
+    const fresh: { promise: Promise<string>; failedAt?: number } = {
+      promise: this.fetchAdvertiserCurrency(advertiserId, context),
+    };
+    fresh.promise.catch(() => {
+      fresh.failedAt = Date.now();
+    });
+    this.advertiserCurrencies.set(advertiserId, fresh);
+    return fresh.promise;
+  }
+
+  private fetchAdvertiserCurrency(advertiserId: string, context?: RequestContext): Promise<string> {
+    return withDV360ApiSpan("getAdvertiserCurrency", "advertiser", async () => {
+      // Rate limit by owner, as every other advertiser-scoped call.
+      await consumeDv360Quota(this.rateLimiter, { advertiserId });
+      setSpanAttribute("dv360.advertiserId", advertiserId);
+      const response = await this.httpClient.fetch(
+        `/advertisers/${encodeURIComponent(advertiserId)}`,
+        context,
+        undefined,
+        DV360_CURRENCY_LOOKUP_RETRY
+      );
+      const code = (response as { generalConfig?: { currencyCode?: unknown } } | undefined)
         ?.generalConfig?.currencyCode;
       if (typeof code !== "string" || code.length === 0) {
         throw new McpError(
@@ -405,9 +453,6 @@ export class DV360Service {
       }
       return code;
     });
-    this.advertiserCurrencies.set(advertiserId, pending);
-    pending.catch(() => this.advertiserCurrencies.delete(advertiserId));
-    return pending;
   }
 
   /**

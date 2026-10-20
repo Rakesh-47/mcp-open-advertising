@@ -26,6 +26,10 @@
  * fixed currency `budget.maxAmount`, mapped to `lifetime` (no `daily`, no
  * `segments`). A line item with no fixed currency amount (UNLIMITED or
  * AUTOMATIC allocation, impression-based unit) leaves `lifetime` null.
+ * `budgetUnit` is output-only (inherited from the parent insertion order), so
+ * a snapshot of a payload that omits it takes the unit from the entity it
+ * replaces, or, for a create, from the parent insertion order; with neither it
+ * is unknown (the dry run fails with BUDGET_UNIT_UNDETERMINED), never 0.
  */
 
 import type { Dv360WriteFixture } from "../types.js";
@@ -112,10 +116,11 @@ export const updateBudgetDecreaseLineItem: Dv360WriteFixture = {
       insertionOrderId: "io-REDACTED-1",
       lineItemId: "li-REDACTED-1",
     },
+    // No `budgetUnit`: it is output-only, so a caller does not send it (the
+    // pre-state below has it, as the API returns it).
     data: {
       budget: {
         budgetAllocationType: "LINE_ITEM_BUDGET_ALLOCATION_TYPE_FIXED",
-        budgetUnit: "BUDGET_UNIT_CURRENCY",
         maxAmount: "30000000",
       },
     },

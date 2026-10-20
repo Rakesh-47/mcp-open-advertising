@@ -20,9 +20,11 @@
 import type {
   CanonicalEntityKind,
   CanonicalStatus,
+  DryRunValidationError,
   NormalizedEntitySnapshot,
   RequestContext,
 } from "@cesteral/shared";
+import { currencyMinorUnitExponent, knownCurrencyOrNull } from "./iso-4217.js";
 
 export interface Dv360ServiceLike {
   getEntity?: (
@@ -36,7 +38,9 @@ export interface Dv360ServiceLike {
 
 /**
  * ISO 4217 "no currency involved" code, used when the advertiser's currency
- * cannot be read, so a snapshot never claims a currency it does not know.
+ * cannot be read or is not a known ISO 4217 code, so a snapshot never claims a
+ * currency it does not know. Governance reads a snapshot in it as an unknown
+ * currency and refuses a non-zero exposure rather than defaulting one.
  */
 export const DV360_UNKNOWN_CURRENCY = "XXX";
 
@@ -65,7 +69,7 @@ export async function resolveDv360Currency(
   }
   try {
     const code = await service.getAdvertiserCurrency(advertiserId, context);
-    return /^[A-Z]{3}$/.test(code) ? code : DV360_UNKNOWN_CURRENCY;
+    return knownCurrencyOrNull(code) ?? DV360_UNKNOWN_CURRENCY;
   } catch {
     return DV360_UNKNOWN_CURRENCY;
   }
@@ -86,32 +90,117 @@ function normalizeStatus(raw: unknown): { canonical: CanonicalStatus; platformRa
 }
 
 /**
- * ISO 4217 minor-unit exponent for `currency` (USD 2, JPY 0, KWD 3), read from
- * the runtime's ICU currency data. Falls back to 2 for codes ICU does not know
- * (including DV360_UNKNOWN_CURRENCY).
+ * The exponent for a currency that is unresolved (DV360_UNKNOWN_CURRENCY). An
+ * amount in an unresolved currency is magnitude-only: the XXX label beside it
+ * is what governance refuses on, so the exponent chosen here cannot size an
+ * exposure. Governance converts such an amount at 2 for display, and so does
+ * this.
  */
-function currencyExponent(currency: string): number {
-  if (currency === DV360_UNKNOWN_CURRENCY) return 2;
-  try {
-    const digits = new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
-      .maximumFractionDigits;
-    return typeof digits === "number" ? digits : 2;
-  } catch {
-    return 2;
-  }
-}
+const UNRESOLVED_CURRENCY_EXPONENT = 2;
 
 /**
- * Micros of the advertiser currency → its minor units. 1,000,000 micros is one
- * major unit: $1.00 = 100 cents, but ¥1 = 1 minor unit (JPY has none smaller).
- * Only a non-negative integer counts: an int64 arrives as a digit string.
+ * Micros of the advertiser currency → its ISO 4217 minor units (the table in
+ * `iso-4217.ts`, equal to the governance layer's). 1,000,000 micros is one
+ * major unit: $1.00 = 100 cents, ¥1 = 1 minor unit (JPY has none smaller),
+ * 1 KWD = 1,000 fils. Only a non-negative integer counts: an int64 arrives as
+ * a digit string.
  */
 function microsToMinor(micros: unknown, currency: string): number | undefined {
   if (typeof micros !== "string" && typeof micros !== "number") return undefined;
   const n = typeof micros === "string" ? (/^\d+$/.test(micros) ? Number(micros) : NaN) : micros;
   if (!Number.isFinite(n) || n < 0) return undefined;
-  const minor = Math.round(n / 10 ** (6 - currencyExponent(currency)));
+  const exponent = currencyMinorUnitExponent(currency) ?? UNRESOLVED_CURRENCY_EXPONENT;
+  const minor = Math.round(n / 10 ** (6 - exponent));
   return Number.isSafeInteger(minor) ? minor : undefined;
+}
+
+const FIXED_ALLOCATION = "LINE_ITEM_BUDGET_ALLOCATION_TYPE_FIXED";
+type LineItemBudgetUnit = "BUDGET_UNIT_CURRENCY" | "BUDGET_UNIT_IMPRESSIONS";
+
+/**
+ * A line item's budget unit. `LineItemBudget.budgetUnit` is "Output only ...
+ * inherited from the parent insertion order" (v4 Discovery), so a payload that
+ * creates a line item or replaces its whole `budget` does not carry it. It is
+ * taken from the budget being normalized, else from the entity it replaces
+ * (`current`). `undefined` when neither says: the unit, and so whether
+ * `maxAmount` is money or a count of impressions, is not known.
+ */
+function resolveLineItemBudgetUnit(
+  budget: Record<string, unknown> | undefined,
+  currentBudget: Record<string, unknown> | undefined
+): LineItemBudgetUnit | undefined {
+  for (const unit of [budget?.budgetUnit, currentBudget?.budgetUnit]) {
+    if (unit === "BUDGET_UNIT_CURRENCY" || unit === "BUDGET_UNIT_IMPRESSIONS") return unit;
+  }
+  return undefined;
+}
+
+/**
+ * The dry-run error for a line item whose budget has a fixed amount but no
+ * determinable unit. The snapshot cannot say whether `maxAmount` is money, and
+ * a lifetime of null is read downstream as "books no exposure". An explicit
+ * failure is the only way to say "unknown, not zero" through the canonical
+ * shape, so the dry run does not pass. `undefined` when the unit is known or
+ * there is no fixed amount to size.
+ */
+export function lineItemBudgetUnitUndetermined(
+  entityType: string,
+  current: Record<string, unknown>,
+  applied: Record<string, unknown>
+): DryRunValidationError | undefined {
+  if (entityType !== "lineItem") return undefined;
+  const budget = applied.budget as Record<string, unknown> | undefined;
+  if (budget?.budgetAllocationType !== FIXED_ALLOCATION || budget.maxAmount == null) {
+    return undefined;
+  }
+  const currentBudget = current.budget as Record<string, unknown> | undefined;
+  if (resolveLineItemBudgetUnit(budget, currentBudget)) return undefined;
+  return {
+    code: "BUDGET_UNIT_UNDETERMINED",
+    message:
+      "The line item's budget unit (currency or impressions) is output-only and could not be " +
+      "determined from the payload, the current line item or the parent insertion order, so the " +
+      "size of its budget is unknown.",
+    field: "budget.budgetUnit",
+  };
+}
+
+/**
+ * `data` for the snapshot of a line item that is about to be created, with the
+ * output-only `budget.budgetUnit` filled in from the parent insertion order
+ * (`data.insertionOrderId`), which the new line item inherits it from. Reads
+ * the parent only when the budget has a fixed amount and no unit; a read
+ * failure propagates, like an unreadable pre-state does for an update dry run.
+ * Returns `data` unchanged when there is nothing to inherit.
+ */
+export async function inheritLineItemBudgetUnit(
+  service: Dv360ServiceLike,
+  entityType: string,
+  ids: Record<string, string>,
+  data: Record<string, unknown>,
+  context?: RequestContext
+): Promise<Record<string, unknown>> {
+  const budget = data.budget as Record<string, unknown> | undefined;
+  const advertiserId = ids.advertiserId ?? data.advertiserId;
+  const insertionOrderId = data.insertionOrderId;
+  if (
+    entityType !== "lineItem" ||
+    budget?.budgetAllocationType !== FIXED_ALLOCATION ||
+    budget.maxAmount == null ||
+    resolveLineItemBudgetUnit(budget, undefined) ||
+    typeof advertiserId !== "string" ||
+    typeof insertionOrderId !== "string" ||
+    !service.getEntity
+  ) {
+    return data;
+  }
+  const parent = (await service.getEntity(
+    "insertionOrder",
+    { advertiserId, insertionOrderId },
+    context
+  )) as Record<string, any> | undefined;
+  const unit = resolveLineItemBudgetUnit(parent?.budget, undefined);
+  return unit ? { ...data, budget: { ...budget, budgetUnit: unit } } : data;
 }
 
 /**
@@ -122,16 +211,15 @@ function microsToMinor(micros: unknown, currency: string): number | undefined {
  * - UNLIMITED: "this field is not applicable and will be ignored by the system",
  *   so a stale value may still be echoed back;
  * - AUTOMATIC: "immutable and is set by the system", not a cap anyone fixed;
- * - BUDGET_UNIT_IMPRESSIONS: `maxAmount` is a number of impressions.
+ * - BUDGET_UNIT_IMPRESSIONS: `maxAmount` is a number of impressions;
+ * - no determinable unit: see {@link lineItemBudgetUnitUndetermined}.
  */
 function lineItemLifetime(
   budget: Record<string, unknown> | undefined,
+  unit: LineItemBudgetUnit | undefined,
   currency: string
 ): { amountMinor: number; currency: string } | null {
-  if (
-    budget?.budgetAllocationType !== "LINE_ITEM_BUDGET_ALLOCATION_TYPE_FIXED" ||
-    budget?.budgetUnit !== "BUDGET_UNIT_CURRENCY"
-  ) {
+  if (budget?.budgetAllocationType !== FIXED_ALLOCATION || unit !== "BUDGET_UNIT_CURRENCY") {
     return null;
   }
   const amountMinor = microsToMinor(budget.maxAmount, currency);
@@ -140,19 +228,22 @@ function lineItemLifetime(
 
 /**
  * Pure builder. `applied` is the entity post-overlay (or post-write); `current`
- * is only used for status fallback when `applied.entityStatus` is missing.
+ * is the entity it replaces, used for the status when `applied.entityStatus` is
+ * missing and for a line item's budget unit when `applied.budget` omits it.
  * `currency` is the advertiser's ISO 4217 code (`resolveDv360Currency`): DV360
- * amounts are micros of it, which the entity itself does not carry.
+ * amounts are micros of it, which the entity itself does not carry. A code that
+ * is not a known ISO 4217 currency is reported as DV360_UNKNOWN_CURRENCY.
  */
 export function buildDv360Snapshot(
   entityType: string,
   ids: Record<string, string>,
   current: Record<string, unknown>,
   applied: Record<string, unknown>,
-  currency: string
+  currencyCode: string
 ): NormalizedEntitySnapshot | null {
   const entityKind = ENTITY_KIND_MAP[entityType];
   if (!entityKind) return null;
+  const currency = knownCurrencyOrNull(currencyCode) ?? DV360_UNKNOWN_CURRENCY;
 
   const platformEntityId =
     ids.lineItemId ?? ids.insertionOrderId ?? ids.campaignId ?? ids.advertiserId ?? "";
@@ -198,7 +289,14 @@ export function buildDv360Snapshot(
       daily: null,
       lifetime:
         entityKind === "line_item"
-          ? lineItemLifetime(merged?.budget, currency)
+          ? lineItemLifetime(
+              merged?.budget,
+              resolveLineItemBudgetUnit(
+                merged?.budget,
+                current.budget as Record<string, unknown> | undefined
+              ),
+              currency
+            )
           : lifetimeMinor > 0
             ? { amountMinor: lifetimeMinor, currency }
             : null,
@@ -224,7 +322,9 @@ export async function captureDv360Snapshot(
   dv360Service: Dv360ServiceLike,
   entityType: string,
   ids: Record<string, string>,
-  context: RequestContext
+  context: RequestContext,
+  /** The currency the caller already resolved, so the two snapshots of one write cannot differ. */
+  resolvedCurrency?: string
 ): Promise<NormalizedEntitySnapshot | undefined> {
   if (!ENTITY_KIND_MAP[entityType] || !dv360Service.getEntity) return undefined;
   try {
@@ -233,7 +333,8 @@ export async function captureDv360Snapshot(
       unknown
     >;
     if (!current || typeof current !== "object") return undefined;
-    const currency = await resolveDv360Currency(dv360Service, entityType, ids, context);
+    const currency =
+      resolvedCurrency ?? (await resolveDv360Currency(dv360Service, entityType, ids, context));
     const snapshot = buildDv360Snapshot(entityType, ids, current, current, currency);
     return snapshot ?? undefined;
   } catch {

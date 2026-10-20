@@ -21,8 +21,9 @@
  * example, 1500000 represents 1.5 standard units of the currency."
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mcpConfig } from "../../src/config/index.js";
+import { DV360_CURRENCY_LOOKUP_RETRY } from "../../src/services/dv360/dv360-http-client.js";
 import {
   updateEntityLogic,
   UpdateEntityInputSchema,
@@ -183,11 +184,6 @@ describe("dv360_update_entity on a line item: before/after carry the budget", ()
     expect(out.before!.budget!.lifetime).toEqual({ amountMinor: 5000, currency: "XXX" });
     expect(out.after!.budget!.lifetime).toEqual({ amountMinor: 3000, currency: "XXX" });
     expect(requests()).toContain(`PATCH /v4/advertisers/${ADV}/lineItems/222`);
-
-    // A failed read is not kept: the next write asks again and gets the answer.
-    stub.route({ method: "GET", path: `/v4/advertisers/${ADV}`, response: advertiser("EUR") });
-    const next = await updateEntityLogic(lowerBudget("20000000"), ctx, sdk);
-    expect(next.after!.budget!.lifetime).toEqual({ amountMinor: 2000, currency: "EUR" });
   });
 
   it("dry_run projects the post-state in the advertiser's currency (KWD, exponent 3)", async () => {
@@ -206,5 +202,136 @@ describe("dv360_update_entity on a line item: before/after carry the budget", ()
       currency: "KWD",
     });
     expect(stub.to(DV360_HOST).filter((r) => r.method !== "GET")).toHaveLength(0);
+  });
+});
+
+/**
+ * A failing `advertisers.get` must cost one bounded lookup, not one per write
+ * (#300 review S3). It used to run the client's full retry budget (3 retries,
+ * 10 s timeout, 1-10 s backoff) on every governed write and dry run during an
+ * outage, and a flapping answer made the snapshot's currency flip between the
+ * real code and XXX, which governance reads as a currency change and as drift.
+ */
+describe("the advertiser currency lookup is bounded, shared, and briefly remembered when it fails", () => {
+  const advertiserGets = () =>
+    stub.to(DV360_HOST).filter((r) => r.method === "GET" && r.path === `/v4/advertisers/${ADV}`);
+
+  const routeLineItem = () => {
+    stub.route({
+      method: "GET",
+      path: `/v4/advertisers/${ADV}/lineItems/222`,
+      response: lineItem("50000000"),
+    });
+    stub.route({ method: "PATCH", path: `/v4/advertisers/${ADV}/lineItems/222`, response: echo });
+  };
+
+  const down = () =>
+    stub.route({
+      method: "GET",
+      path: `/v4/advertisers/${ADV}`,
+      status: 503,
+      response: { error: { code: 503, message: "Service unavailable", status: "UNAVAILABLE" } },
+    });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("places at most two requests for one failed lookup (one retry), not the client's four", async () => {
+    down();
+    routeLineItem();
+
+    const out = await updateEntityLogic(lowerBudget("30000000"), ctx, sdk);
+
+    expect(advertiserGets()).toHaveLength(2);
+    // Unresolved stays explicitly unknown, and the write itself proceeds.
+    expect(out.before!.budget!.lifetime!.currency).toBe("XXX");
+    expect(out.after!.budget!.lifetime!.currency).toBe("XXX");
+    expect(stub.to(DV360_HOST).filter((r) => r.method === "PATCH")).toHaveLength(1);
+  });
+
+  it("remembers the failure, so the next write in the window places no lookup at all", async () => {
+    down();
+    routeLineItem();
+    await updateEntityLogic(lowerBudget("30000000"), ctx, sdk);
+    const placed = advertiserGets().length;
+
+    // The advertiser is back, but the failure is remembered for the window.
+    stub.route({ method: "GET", path: `/v4/advertisers/${ADV}`, response: advertiser("EUR") });
+    const next = await updateEntityLogic(lowerBudget("20000000"), ctx, sdk);
+
+    expect(advertiserGets()).toHaveLength(placed);
+    expect(next.after!.budget!.lifetime!.currency).toBe("XXX");
+  });
+
+  it("asks again once the window has passed, and then carries the real code", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-20T10:00:00Z"));
+    down();
+    routeLineItem();
+    await updateEntityLogic(lowerBudget("30000000"), ctx, sdk);
+    const placed = advertiserGets().length;
+
+    stub.route({ method: "GET", path: `/v4/advertisers/${ADV}`, response: advertiser("EUR") });
+    vi.setSystemTime(new Date("2026-10-20T10:02:00Z"));
+    const next = await updateEntityLogic(lowerBudget("20000000"), ctx, sdk);
+
+    expect(advertiserGets()).toHaveLength(placed + 1);
+    expect(next.after!.budget!.lifetime).toEqual({ amountMinor: 2000, currency: "EUR" });
+  });
+
+  it("keeps a resolved currency for the session: it is immutable, so a later outage cannot unresolve it", async () => {
+    stub.route({ method: "GET", path: `/v4/advertisers/${ADV}`, response: advertiser("EUR") });
+    routeLineItem();
+    await updateEntityLogic(lowerBudget("30000000"), ctx, sdk);
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-21T10:00:00Z"));
+    down();
+    const next = await updateEntityLogic(lowerBudget("20000000"), ctx, sdk);
+
+    expect(advertiserGets()).toHaveLength(1);
+    expect(next.after!.budget!.lifetime).toEqual({ amountMinor: 2000, currency: "EUR" });
+  });
+
+  it("shares one lookup between concurrent callers", async () => {
+    stub.route({ method: "GET", path: `/v4/advertisers/${ADV}`, response: advertiser("JPY") });
+
+    const service = session.services.dv360Service;
+    const codes = await Promise.all([
+      service.getAdvertiserCurrency(ADV),
+      service.getAdvertiserCurrency(ADV),
+      service.getAdvertiserCurrency(ADV),
+    ]);
+
+    expect(codes).toEqual(["JPY", "JPY", "JPY"]);
+    expect(advertiserGets()).toHaveLength(1);
+  });
+
+  it("shares one failure between concurrent callers", async () => {
+    down();
+
+    const service = session.services.dv360Service;
+    const results = await Promise.allSettled([
+      service.getAdvertiserCurrency(ADV),
+      service.getAdvertiserCurrency(ADV),
+    ]);
+
+    expect(results.map((r) => r.status)).toEqual(["rejected", "rejected"]);
+    expect(advertiserGets()).toHaveLength(2);
+  });
+
+  it("bounds a single attempt to 5 s, not the client's 10 s", async () => {
+    down();
+    const service = session.services.dv360Service;
+    await service.getAdvertiserCurrency(ADV).catch(() => undefined);
+    // The wire stub cannot observe a timeout; the bound is the config the
+    // lookup passes to the client.
+    expect(DV360_CURRENCY_LOOKUP_RETRY).toEqual({
+      timeoutMs: 5_000,
+      maxRetries: 1,
+      initialBackoffMs: 500,
+      maxBackoffMs: 2_000,
+    });
   });
 });

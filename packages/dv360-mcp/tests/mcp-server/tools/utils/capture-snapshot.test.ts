@@ -352,3 +352,201 @@ describe("dry-run runners project the line item budget in the advertiser's curre
     });
   });
 });
+
+describe("ISO 4217 exponents in snapshots (#300 review S2)", () => {
+  it("reads RSD 1,500 as 150,000 minor units, the unit the governance layer reads back", () => {
+    // 1,500 dinar = 1,500,000,000 micros. ISO 4217 says RSD has exponent 2; the
+    // CLDR display digits `Intl` reports are 0, which gave 1,500 here and made
+    // governance read 15.00 RSD (100x low, so an increase booked 1% of its size).
+    expect(lifetimeOf(lineItem(fixedCurrency("1500000000")), "RSD")).toEqual({
+      amountMinor: 150000,
+      currency: "RSD",
+    });
+  });
+
+  it("converts every code on which Intl and ISO 4217 disagree by the ISO exponent", () => {
+    const micros = "1500000000";
+    for (const code of ["AFN", "ALL", "IRR", "KPW", "LAK", "LBP", "MGA", "MMK", "SLL", "SOS"]) {
+      expect(lifetimeOf(lineItem(fixedCurrency(micros)), code)?.amountMinor, code).toBe(150000);
+    }
+    // IQD is exponent 3 in ISO 4217 (Intl says 0).
+    expect(lifetimeOf(lineItem(fixedCurrency(micros)), "IQD")?.amountMinor).toBe(1500000);
+  });
+
+  it("labels the amounts XXX, not the code, when the currency is not a known ISO 4217 code", () => {
+    expect(lifetimeOf(lineItem(fixedCurrency("50000000")), "ZZZ")).toEqual({
+      amountMinor: 5000,
+      currency: "XXX",
+    });
+    expect(lifetimeOf(lineItem(fixedCurrency("50000000")), "usd")?.currency).toBe("XXX");
+  });
+
+  it("resolveDv360Currency treats a code the table does not know as unresolved", async () => {
+    const service = { getAdvertiserCurrency: vi.fn().mockResolvedValue("ZZZ") };
+    await expect(resolveDv360Currency(service, "lineItem", ids)).resolves.toBe("XXX");
+  });
+
+  it("applyDv360Patch refuses a call without the currency instead of guessing one", () => {
+    expect(() =>
+      (applyDv360Patch as (...args: unknown[]) => unknown)(
+        "lineItem",
+        ids,
+        lineItem(fixedCurrency("50000000")),
+        {},
+        ""
+      )
+    ).toThrow(/currency/);
+  });
+});
+
+describe("a line item's budget unit is output-only, so it is not read from the payload alone (#300 review S1)", () => {
+  const FIXED = "LINE_ITEM_BUDGET_ALLOCATION_TYPE_FIXED";
+  // What a caller sends: allocation and amount, no `budgetUnit`.
+  const noUnit = (maxAmount: string) => ({ budgetAllocationType: FIXED, maxAmount });
+  const parent = (budgetUnit?: string) => ({
+    insertionOrderId: "io-1",
+    displayName: "IO",
+    entityStatus: "ENTITY_STATUS_ACTIVE",
+    budget: budgetUnit ? { budgetUnit } : {},
+  });
+  const parentCalls = (svc: { getEntity: ReturnType<typeof vi.fn> }) =>
+    svc.getEntity.mock.calls.filter(([type]) => type === "insertionOrder");
+
+  function createArgs(budget: Record<string, unknown>, data: Record<string, unknown> = {}) {
+    return {
+      entityType: "lineItem",
+      ids: { advertiserId: "adv-1" },
+      data: { displayName: "New", insertionOrderId: "io-1", budget, ...data },
+    };
+  }
+
+  function createService(parentEntity: Record<string, unknown> | Error) {
+    return {
+      getEntity: vi.fn(async (type: string) => {
+        if (type !== "insertionOrder") throw new Error(`unexpected read of ${type}`);
+        if (parentEntity instanceof Error) throw parentEntity;
+        return parentEntity;
+      }),
+      getAdvertiserCurrency: vi.fn().mockResolvedValue("JPY"),
+    };
+  }
+
+  describe("create dry run", () => {
+    it("takes the unit from the parent insertion order", async () => {
+      const svc = createService(parent("BUDGET_UNIT_CURRENCY"));
+      const result = await runDv360CreateDryRun(createArgs(noUnit("1500000000")), svc, {
+        requestId: "r",
+      } as any);
+      expect(svc.getEntity).toHaveBeenCalledWith(
+        "insertionOrder",
+        { advertiserId: "adv-1", insertionOrderId: "io-1" },
+        { requestId: "r" }
+      );
+      expect(result.wouldSucceed).toBe(true);
+      expect(result.expectedPostState!.budget!.lifetime).toEqual({
+        amountMinor: 1500,
+        currency: "JPY",
+      });
+    });
+
+    it("leaves lifetime null, and passes, when the parent's budget is impression-based", async () => {
+      const svc = createService(parent("BUDGET_UNIT_IMPRESSIONS"));
+      const result = await runDv360CreateDryRun(createArgs(noUnit("100000")), svc, {} as any);
+      expect(result.wouldSucceed).toBe(true);
+      expect(result.expectedPostState!.budget!.lifetime).toBeNull();
+    });
+
+    it("reads no parent when the payload carries the unit or sets no fixed amount", async () => {
+      const svc = createService(parent("BUDGET_UNIT_CURRENCY"));
+      await runDv360CreateDryRun(createArgs(fixedCurrency("1500000000")), svc, {} as any);
+      await runDv360CreateDryRun(
+        createArgs({ budgetAllocationType: "LINE_ITEM_BUDGET_ALLOCATION_TYPE_UNLIMITED" }),
+        svc,
+        {} as any
+      );
+      await runDv360CreateDryRun(
+        { entityType: "campaign", ids: { advertiserId: "adv-1" }, data: { displayName: "C" } },
+        svc,
+        {} as any
+      );
+      expect(parentCalls(svc)).toHaveLength(0);
+    });
+
+    it("says the budget is undetermined, and does not pass, when no unit can be found", async () => {
+      for (const [label, svc, args] of [
+        [
+          "no insertionOrderId in the payload",
+          createService(parent("BUDGET_UNIT_CURRENCY")),
+          createArgs(noUnit("1500000000"), { insertionOrderId: undefined }),
+        ],
+        [
+          "the parent has no budget unit",
+          createService(parent()),
+          createArgs(noUnit("1500000000")),
+        ],
+      ] as const) {
+        const result = await runDv360CreateDryRun(args, svc, {} as any);
+        expect(result.wouldSucceed, label).toBe(false);
+        expect(result.validationErrors, label).toEqual([
+          expect.objectContaining({ code: "BUDGET_UNIT_UNDETERMINED", field: "budget.budgetUnit" }),
+        ]);
+        // Unknown, never 0: the amount is not claimed.
+        expect(result.expectedPostState!.budget!.lifetime, label).toBeNull();
+      }
+    });
+
+    it("fails the dry run when the parent cannot be read, as an unreadable pre-state does", async () => {
+      const svc = createService(new Error("insertion order 404"));
+      await expect(
+        runDv360CreateDryRun(createArgs(noUnit("1500000000")), svc, {} as any)
+      ).rejects.toThrow(/404/);
+    });
+  });
+
+  describe("update dry run", () => {
+    const wholeBudget = (maxAmount: string) => ({
+      entityType: "lineItem",
+      ids,
+      data: { budget: noUnit(maxAmount) },
+      updateMask: "budget",
+    });
+
+    it("keeps the current line item's unit when the mask replaces the whole budget", async () => {
+      const svc = {
+        getEntity: vi.fn().mockResolvedValue(lineItem(fixedCurrency("1500000000"))),
+        getAdvertiserCurrency: vi.fn().mockResolvedValue("JPY"),
+      };
+      const result = await runDv360UpdateDryRun(wholeBudget("1000000000"), svc, {} as any);
+      expect(result.expectedPostState!.budget!.lifetime).toEqual({
+        amountMinor: 1000,
+        currency: "JPY",
+      });
+    });
+
+    it("says the budget is undetermined when neither the payload nor the current line item has a unit", async () => {
+      const svc = {
+        getEntity: vi.fn().mockResolvedValue(lineItem(noUnit("1500000000"))),
+        getAdvertiserCurrency: vi.fn().mockResolvedValue("JPY"),
+      };
+      const result = await runDv360UpdateDryRun(wholeBudget("1000000000"), svc, {} as any);
+      expect(result.wouldSucceed).toBe(false);
+      expect(result.validationErrors).toEqual([
+        expect.objectContaining({ code: "BUDGET_UNIT_UNDETERMINED" }),
+      ]);
+      expect(result.expectedPostState!.budget!.lifetime).toBeNull();
+    });
+  });
+
+  it("buildDv360Snapshot falls back to the current entity's unit, and to null without one", () => {
+    const current = lineItem(fixedCurrency("1500000000"));
+    const applied = lineItem(noUnit("1000000000"));
+    expect(buildDv360Snapshot("lineItem", ids, current, applied, "JPY")!.budget!.lifetime).toEqual({
+      amountMinor: 1000,
+      currency: "JPY",
+    });
+    expect(
+      buildDv360Snapshot("lineItem", ids, lineItem(noUnit("1500000000")), applied, "JPY")!.budget!
+        .lifetime
+    ).toBeNull();
+  });
+});

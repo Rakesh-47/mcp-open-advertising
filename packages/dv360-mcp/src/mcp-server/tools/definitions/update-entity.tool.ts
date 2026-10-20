@@ -237,7 +237,8 @@ export async function updateEntityLogic(
         dv360Service,
         validatedInput.entityType,
         entityIds,
-        context
+        context,
+        currency
       );
     }
     return {

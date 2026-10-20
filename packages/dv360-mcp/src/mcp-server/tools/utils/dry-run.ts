@@ -33,6 +33,8 @@ import type {
 import {
   buildDv360Snapshot,
   ENTITY_KIND_MAP,
+  inheritLineItemBudgetUnit,
+  lineItemBudgetUnitUndetermined,
   resolveDv360Currency,
   type Dv360ServiceLike,
 } from "./capture-snapshot.js";
@@ -85,6 +87,12 @@ export function applyDv360Patch(
   updateMask: string,
   currency: string
 ): NormalizedEntitySnapshot | undefined {
+  if (typeof currency !== "string") {
+    throw new TypeError(
+      "applyDv360Patch requires the advertiser's ISO 4217 currency as its last argument: DV360 " +
+        "amounts are micros of it and the entity does not carry it."
+    );
+  }
   const applied: Record<string, any> = deepClone(preState);
   const maskFields = updateMask
     .split(",")
@@ -190,8 +198,19 @@ export async function runDv360CreateDryRun(
   let expectedPostState: NormalizedEntitySnapshot | undefined;
   let expectedStateSource: DryRunResult["expectedStateSource"] = "none";
   if (ENTITY_KIND_MAP[args.entityType]) {
+    // `budget.budgetUnit` is output-only: a create payload does not carry it, so
+    // the new line item's unit is its parent insertion order's.
+    const data = await inheritLineItemBudgetUnit(
+      dv360Service,
+      args.entityType,
+      args.ids,
+      args.data,
+      context
+    );
+    const unitError = lineItemBudgetUnitUndetermined(args.entityType, {}, data);
+    if (unitError) validationErrors.push(unitError);
     const currency = await resolveDv360Currency(dv360Service, args.entityType, args.ids, context);
-    const snapshot = buildDv360Snapshot(args.entityType, args.ids, {}, args.data, currency);
+    const snapshot = buildDv360Snapshot(args.entityType, args.ids, {}, data, currency);
     if (snapshot) {
       expectedPostState = { ...snapshot, platformEntityId: "" };
       expectedStateSource = "server_symbolic_apply";
@@ -346,6 +365,11 @@ export async function runDv360UpdateDryRun(
   let expectedPostState: NormalizedEntitySnapshot | undefined;
   let expectedStateSource: DryRunResult["expectedStateSource"] = "none";
   if (current) {
+    // A mask that replaces the whole `budget` drops the output-only
+    // `budgetUnit`; the snapshot takes it from `current`. If it has none to
+    // take, the budget is of unknown size and the dry run says so.
+    const unitError = lineItemBudgetUnitUndetermined(input.entityType, current, applied);
+    if (unitError) validationErrors.push(unitError);
     const currency = await resolveDv360Currency(dv360Service, input.entityType, input.ids, context);
     const snapshot = buildDv360Snapshot(input.entityType, input.ids, current, applied, currency);
     if (snapshot) {
@@ -435,6 +459,8 @@ export async function runDv360DuplicateDryRun(
         entityStatus: landingStatus,
         ...(copyName != null ? { displayName: copyName } : {}),
       };
+      const unitError = lineItemBudgetUnitUndetermined(args.entityType, source, applied);
+      if (unitError) validationErrors.push(unitError);
       const currency = await resolveDv360Currency(dv360Service, args.entityType, args.ids, context);
       const snapshot = buildDv360Snapshot(args.entityType, args.ids, source, applied, currency);
       if (snapshot) {
