@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
 import { runDv360DuplicateDryRun, resolveDv360DuplicateCapability } from "../utils/dry-run.js";
-import { snapshotFromDv360Entity } from "../utils/capture-snapshot.js";
+import { snapshotFromDv360Entity, resolveDv360Currency } from "../utils/capture-snapshot.js";
 import {
   DryRunResultSchema,
   NormalizedEntitySnapshotSchema,
@@ -164,10 +164,12 @@ export async function duplicateEntityLogic(
     typeof newId === "string" || typeof newId === "number"
       ? { advertiserId: input.advertiserId, [entityIdField]: String(newId) }
       : ids;
+  const currency = await resolveDv360Currency(dv360Service, entityType, ids, context);
   const after: NormalizedEntitySnapshot | undefined = snapshotFromDv360Entity(
     entityType,
     idsForAfter,
-    newEntity ?? {}
+    newEntity ?? {},
+    currency
   );
 
   return {

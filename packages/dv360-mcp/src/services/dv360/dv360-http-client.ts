@@ -15,6 +15,28 @@ export const DV360_RETRY_CONFIG: RetryConfig = {
   platformName: "DV360",
 };
 
+/** `overrides` without its `undefined` entries, so they cannot unset a default. */
+function definedOnly<T extends object>(overrides: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(overrides).filter(([, v]) => v !== undefined)
+  ) as Partial<T>;
+}
+
+/**
+ * The retry budget of the advertiser currency lookup that governed writes make
+ * for their snapshots (`DV360Service.getAdvertiserCurrency`). It is a read
+ * that only labels a snapshot, so a failure degrades to an explicitly unknown
+ * currency instead of being pursued: one retry and a 5 s timeout per attempt,
+ * at most ~11 s once per failure window, instead of the client's default of 3
+ * retries at 10 s (about a minute) paid again by every governed write.
+ */
+export const DV360_CURRENCY_LOOKUP_RETRY = {
+  timeoutMs: 5_000,
+  maxRetries: 1,
+  initialBackoffMs: 500,
+  maxBackoffMs: 2_000,
+} as const;
+
 /**
  * Shared HTTP client for DV360 API requests.
  *
@@ -73,13 +95,17 @@ export class DV360HttpClient {
    *
    * `overrides.timeoutMs` raises the per-attempt timeout for methods Discovery
    * flags as "regularly experiences high latency" (e.g. `lineItems.duplicate`),
-   * where the default would abort a request that is still committing.
+   * where the default would abort a request that is still committing. The other
+   * overrides narrow the retry budget of a best-effort read
+   * ({@link DV360_CURRENCY_LOOKUP_RETRY}).
    */
   async fetch(
     path: string,
     context?: RequestContext,
     options?: RequestInit,
-    overrides?: { timeoutMs?: number }
+    overrides?: Partial<
+      Pick<RetryConfig, "timeoutMs" | "maxRetries" | "initialBackoffMs" | "maxBackoffMs">
+    >
   ): Promise<unknown> {
     const url = `${this.baseUrl}${path}`;
     const method = options?.method || "GET";
@@ -89,10 +115,9 @@ export class DV360HttpClient {
     return withDV360ApiSpan(`api.${method}`, path, async (span) => {
       span.setAttribute("http.request.method", method);
       span.setAttribute("http.url", url);
-      const retryConfig: RetryConfig =
-        overrides?.timeoutMs !== undefined
-          ? { ...DV360_RETRY_CONFIG, timeoutMs: overrides.timeoutMs }
-          : DV360_RETRY_CONFIG;
+      const retryConfig: RetryConfig = overrides
+        ? { ...DV360_RETRY_CONFIG, ...definedOnly(overrides) }
+        : DV360_RETRY_CONFIG;
       return executeWithRetry(retryConfig, {
         url,
         fetchOptions: options,

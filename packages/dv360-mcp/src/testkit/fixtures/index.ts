@@ -11,9 +11,27 @@
  * preState, args.data, args.updateMask)` produces. Conformance test in
  * `tests/testkit/conformance.test.ts` enforces this.
  *
- * Currency note: round-1 canonical shape defaults to USD because DV360
- * advertiser currency isn't carried on the entity directly. Scrubbed
- * fixtures reuse that default.
+ * Units: DV360 amounts (`budgetAmountMicros`, a line item's
+ * `budget.maxAmount`) are int64 micros of the ADVERTISER's currency
+ * (1,000,000 micros = 1 major unit); the canonical snapshot stores ISO 4217
+ * minor units of that currency (`amountMinor`), so micros are converted by the
+ * currency's exponent. The currency is `Advertiser.generalConfig.currencyCode`
+ * and is not carried on the entity, so it is an input to `applyDv360Patch`:
+ * these fixtures model a USD advertiser (exponent 2), where micros are
+ * ÷10,000 (50,000,000 micros = 5,000 cents = $50), and `assertContract` passes
+ * "USD".
+ *
+ * Budget coverage: an insertion order's budget is its flighted segments
+ * (`budget.budgetSegments`, mirrored to `lifetime`); a line item's is its
+ * fixed currency `budget.maxAmount`, mapped to `lifetime` (no `daily`, no
+ * `segments`). A line item with no fixed currency amount (UNLIMITED or
+ * AUTOMATIC allocation, impression-based unit) leaves `lifetime` null.
+ * `budgetUnit` is output-only (inherited from the parent insertion order), so
+ * a unit in a caller's payload is never used: the snapshot takes it from the
+ * entity it replaces, or, for a create, from the parent insertion order. A
+ * payload unit that contradicts it fails the dry run (BUDGET_UNIT_CONFLICT),
+ * and with no authoritative unit the budget is unknown (BUDGET_UNIT_UNDETERMINED),
+ * never 0.
  */
 
 import type { Dv360WriteFixture } from "../types.js";
@@ -100,10 +118,11 @@ export const updateBudgetDecreaseLineItem: Dv360WriteFixture = {
       insertionOrderId: "io-REDACTED-1",
       lineItemId: "li-REDACTED-1",
     },
+    // No `budgetUnit`: it is output-only, so a caller does not send it (the
+    // pre-state below has it, as the API returns it).
     data: {
       budget: {
         budgetAllocationType: "LINE_ITEM_BUDGET_ALLOCATION_TYPE_FIXED",
-        budgetUnit: "BUDGET_UNIT_CURRENCY",
         maxAmount: "30000000",
       },
     },
@@ -121,11 +140,11 @@ export const updateBudgetDecreaseLineItem: Dv360WriteFixture = {
       maxAmount: "50000000",
     },
   },
-  // The canonical shape for line items in round 1 doesn't surface
-  // `budget.maxAmount` (no segments) — the snapshot leaves budget.lifetime
-  // null. The fixture still exercises the symbolic-apply path so an
-  // accidental schema regression (e.g. emitting a non-null lifetime from a
-  // missing segments array) shows up as a contract break.
+  // A line item has no segments; its FIXED currency `budget.maxAmount`
+  // (30,000,000 micros = 3,000 cents = $30) is the lifetime amount. The
+  // pre-state's 50,000,000 micros normalizes to 5,000 cents through the same
+  // `applyDv360Patch` (empty mask), so the change has a computable delta
+  // (-2,000 cents) and percentage (-40%).
   expectedPostState: {
     schemaVersion: 1,
     platform: "dv360",
@@ -136,13 +155,13 @@ export const updateBudgetDecreaseLineItem: Dv360WriteFixture = {
     status: { canonical: "active", platformRaw: "ENTITY_STATUS_ACTIVE" },
     budget: {
       daily: null,
-      lifetime: null,
+      lifetime: { amountMinor: 3000, currency: "USD" },
       segments: null,
     },
     schedule: { startAt: null, endAt: null },
   },
   description:
-    "update_budget: line-item maxAmount decrease $50 → $30 (lifetime stays null — round-1 canonical shape covers segments only)",
+    "update_budget: line-item maxAmount decrease $50 → $30 (lifetime 5,000 → 3,000 cents USD)",
 };
 
 /** pause: line-item ACTIVE → PAUSED. */

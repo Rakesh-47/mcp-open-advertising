@@ -15,7 +15,7 @@ import { extractParentIds } from "../utils/entity-id-extraction.js";
 import { createSimplifiedCreateEntityInputSchema } from "../utils/simplified-schemas.js";
 import { addIdValidationIssues, mergeIdsIntoData } from "../utils/parent-id-validation.js";
 import { runDv360CreateDryRun, resolveDv360CreateCapability } from "../utils/dry-run.js";
-import { snapshotFromDv360Entity } from "../utils/capture-snapshot.js";
+import { snapshotFromDv360Entity, resolveDv360Currency } from "../utils/capture-snapshot.js";
 import {
   McpError,
   JsonRpcErrorCode,
@@ -269,10 +269,17 @@ export async function createEntityLogic(
     typeof newId === "string" || typeof newId === "number"
       ? { ...parentIds, [ownIdField]: String(newId) }
       : parentIds;
+  const currency = await resolveDv360Currency(
+    dv360Service,
+    validatedInput.entityType,
+    parentIds,
+    context
+  );
   const after: NormalizedEntitySnapshot | undefined = snapshotFromDv360Entity(
     validatedInput.entityType,
     idsForAfter,
-    entity ?? {}
+    entity ?? {},
+    currency
   );
 
   return {

@@ -9,7 +9,8 @@
  * - `getFixtures(operation?, entityKind?)` — filterable fixture registry
  * - `assertContract(operation, entityKind, fixture)` — runs the platform's
  *   symbolic apply and throws on mismatch
- * - `applyDv360Patch` — re-exported symbolic-apply helper
+ * - `applyDv360Patch` — re-exported symbolic-apply helper (takes the advertiser's
+ *   ISO 4217 currency: DV360 amounts are micros of it)
  */
 
 import { applyDv360Patch } from "../mcp-server/tools/utils/dry-run.js";
@@ -56,7 +57,9 @@ export function assertContract(
     fixture.args.ids,
     fixture.preState,
     fixture.args.data,
-    fixture.args.updateMask
+    fixture.args.updateMask,
+    // The fixtures model a USD advertiser (their amounts are USD cents).
+    "USD"
   );
   if (got == null) {
     throw new Error(`assertContract(${fixture.description}): symbolic apply returned undefined`);
