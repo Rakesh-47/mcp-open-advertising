@@ -117,31 +117,88 @@ function microsToMinor(micros: unknown, currency: string): number | undefined {
 const FIXED_ALLOCATION = "LINE_ITEM_BUDGET_ALLOCATION_TYPE_FIXED";
 type LineItemBudgetUnit = "BUDGET_UNIT_CURRENCY" | "BUDGET_UNIT_IMPRESSIONS";
 
+function knownBudgetUnit(unit: unknown): LineItemBudgetUnit | undefined {
+  return unit === "BUDGET_UNIT_CURRENCY" || unit === "BUDGET_UNIT_IMPRESSIONS" ? unit : undefined;
+}
+
 /**
- * A line item's budget unit. `LineItemBudget.budgetUnit` is "Output only ...
- * inherited from the parent insertion order" (v4 Discovery), so a payload that
- * creates a line item or replaces its whole `budget` does not carry it. It is
- * taken from the budget being normalized, else from the entity it replaces
- * (`current`). `undefined` when neither says: the unit, and so whether
- * `maxAmount` is money or a count of impressions, is not known.
+ * A line item's budget unit, from AUTHORITATIVE state only. `LineItemBudget.
+ * budgetUnit` is "Output only ... inherited from the parent insertion order"
+ * (v4 Discovery): the platform sets it and ignores a caller's value, so a unit
+ * in a payload says nothing about what the line item will have. It must never
+ * decide how a budget is sized: a $50,000 fixed budget labelled
+ * BUDGET_UNIT_IMPRESSIONS would otherwise read as a count of impressions and
+ * book no exposure.
+ *
+ * `authoritativeBudget` is the budget of state read from the platform: the
+ * current line item, or an API response. `appliedBudget` is the budget being
+ * normalized; its unit counts only after {@link pinLineItemBudgetUnit} has
+ * replaced a caller's value with the authoritative one, or removed it.
+ * `undefined` when neither says: the unit, and so whether `maxAmount` is money
+ * or a count of impressions, is not known.
  */
 function resolveLineItemBudgetUnit(
-  budget: Record<string, unknown> | undefined,
-  currentBudget: Record<string, unknown> | undefined
+  authoritativeBudget: Record<string, unknown> | undefined,
+  appliedBudget: Record<string, unknown> | undefined
 ): LineItemBudgetUnit | undefined {
-  for (const unit of [budget?.budgetUnit, currentBudget?.budgetUnit]) {
-    if (unit === "BUDGET_UNIT_CURRENCY" || unit === "BUDGET_UNIT_IMPRESSIONS") return unit;
+  return (
+    knownBudgetUnit(authoritativeBudget?.budgetUnit) ?? knownBudgetUnit(appliedBudget?.budgetUnit)
+  );
+}
+
+/** The budget unit the platform reports on `entity` (a line item read from DV360). */
+export function lineItemBudgetUnitOf(
+  entity: Record<string, unknown>
+): LineItemBudgetUnit | undefined {
+  return knownBudgetUnit((entity.budget as Record<string, unknown> | undefined)?.budgetUnit);
+}
+
+/**
+ * Makes `applied` (a line item payload or overlay about to be snapshotted;
+ * mutated in place, so pass a clone) carry the authoritative budget unit and
+ * nothing else. A unit the caller supplied is replaced by `authoritative`, or
+ * removed when there is none to replace it with, so it can never size or hide
+ * a budget.
+ *
+ * Returns BUDGET_UNIT_CONFLICT when the caller's unit contradicts the
+ * authoritative one: the call asked for something the platform will not do, so
+ * the dry run must not pass. The preview then sizes the budget by the
+ * authoritative unit, so the money stays visible.
+ */
+export function pinLineItemBudgetUnit(
+  entityType: string,
+  applied: Record<string, unknown>,
+  authoritative: LineItemBudgetUnit | undefined
+): DryRunValidationError | undefined {
+  const budget = applied.budget;
+  if (entityType !== "lineItem" || !budget || typeof budget !== "object") return undefined;
+  const target = budget as Record<string, unknown>;
+  const supplied = knownBudgetUnit(target.budgetUnit);
+  if (authoritative) {
+    target.budgetUnit = authoritative;
+  } else {
+    delete target.budgetUnit;
+  }
+  if (supplied && authoritative && supplied !== authoritative) {
+    return {
+      code: "BUDGET_UNIT_CONFLICT",
+      message:
+        `The payload's budget.budgetUnit is ${supplied}, but the line item's budget unit is ` +
+        `${authoritative}. The unit is output-only: it is inherited from the parent insertion ` +
+        `order and cannot be set. The preview is sized by ${authoritative}.`,
+      field: "budget.budgetUnit",
+    };
   }
   return undefined;
 }
 
 /**
  * The dry-run error for a line item whose budget has a fixed amount but no
- * determinable unit. The snapshot cannot say whether `maxAmount` is money, and
+ * authoritative unit. The snapshot cannot say whether `maxAmount` is money, and
  * a lifetime of null is read downstream as "books no exposure". An explicit
  * failure is the only way to say "unknown, not zero" through the canonical
  * shape, so the dry run does not pass. `undefined` when the unit is known or
- * there is no fixed amount to size.
+ * there is no fixed amount to size. Call after {@link pinLineItemBudgetUnit}.
  */
 export function lineItemBudgetUnitUndetermined(
   entityType: string,
@@ -154,32 +211,32 @@ export function lineItemBudgetUnitUndetermined(
     return undefined;
   }
   const currentBudget = current.budget as Record<string, unknown> | undefined;
-  if (resolveLineItemBudgetUnit(budget, currentBudget)) return undefined;
+  if (resolveLineItemBudgetUnit(currentBudget, budget)) return undefined;
   return {
     code: "BUDGET_UNIT_UNDETERMINED",
     message:
       "The line item's budget unit (currency or impressions) is output-only and could not be " +
-      "determined from the payload, the current line item or the parent insertion order, so the " +
-      "size of its budget is unknown.",
+      "determined from the current line item or the parent insertion order, so the size of " +
+      "its budget is unknown.",
     field: "budget.budgetUnit",
   };
 }
 
 /**
- * `data` for the snapshot of a line item that is about to be created, with the
- * output-only `budget.budgetUnit` filled in from the parent insertion order
- * (`data.insertionOrderId`), which the new line item inherits it from. Reads
- * the parent only when the budget has a fixed amount and no unit; a read
- * failure propagates, like an unreadable pre-state does for an update dry run.
- * Returns `data` unchanged when there is nothing to inherit.
+ * The budget unit a line item about to be created inherits: its parent
+ * insertion order's (`data.insertionOrderId`), read from the platform. Read
+ * whenever the budget has a fixed amount to size, whatever unit the payload
+ * claims; a read failure propagates, like an unreadable pre-state does for an
+ * update dry run. `undefined` when there is no parent to read or it has no
+ * unit.
  */
-export async function inheritLineItemBudgetUnit(
+export async function readParentBudgetUnit(
   service: Dv360ServiceLike,
   entityType: string,
   ids: Record<string, string>,
   data: Record<string, unknown>,
   context?: RequestContext
-): Promise<Record<string, unknown>> {
+): Promise<LineItemBudgetUnit | undefined> {
   const budget = data.budget as Record<string, unknown> | undefined;
   const advertiserId = ids.advertiserId ?? data.advertiserId;
   const insertionOrderId = data.insertionOrderId;
@@ -187,20 +244,18 @@ export async function inheritLineItemBudgetUnit(
     entityType !== "lineItem" ||
     budget?.budgetAllocationType !== FIXED_ALLOCATION ||
     budget.maxAmount == null ||
-    resolveLineItemBudgetUnit(budget, undefined) ||
     typeof advertiserId !== "string" ||
     typeof insertionOrderId !== "string" ||
     !service.getEntity
   ) {
-    return data;
+    return undefined;
   }
   const parent = (await service.getEntity(
     "insertionOrder",
     { advertiserId, insertionOrderId },
     context
   )) as Record<string, any> | undefined;
-  const unit = resolveLineItemBudgetUnit(parent?.budget, undefined);
-  return unit ? { ...data, budget: { ...budget, budgetUnit: unit } } : data;
+  return knownBudgetUnit(parent?.budget?.budgetUnit);
 }
 
 /**
@@ -229,7 +284,8 @@ function lineItemLifetime(
 /**
  * Pure builder. `applied` is the entity post-overlay (or post-write); `current`
  * is the entity it replaces, used for the status when `applied.entityStatus` is
- * missing and for a line item's budget unit when `applied.budget` omits it.
+ * missing and, being platform state, as the authority for a line item's budget
+ * unit (which a caller's `applied.budget` does not get to decide).
  * `currency` is the advertiser's ISO 4217 code (`resolveDv360Currency`): DV360
  * amounts are micros of it, which the entity itself does not carry. A code that
  * is not a known ISO 4217 currency is reported as DV360_UNKNOWN_CURRENCY.
@@ -292,8 +348,8 @@ export function buildDv360Snapshot(
           ? lineItemLifetime(
               merged?.budget,
               resolveLineItemBudgetUnit(
-                merged?.budget,
-                current.budget as Record<string, unknown> | undefined
+                current.budget as Record<string, unknown> | undefined,
+                merged?.budget
               ),
               currency
             )

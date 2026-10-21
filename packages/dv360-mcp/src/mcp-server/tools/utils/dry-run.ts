@@ -33,8 +33,10 @@ import type {
 import {
   buildDv360Snapshot,
   ENTITY_KIND_MAP,
-  inheritLineItemBudgetUnit,
+  lineItemBudgetUnitOf,
   lineItemBudgetUnitUndetermined,
+  pinLineItemBudgetUnit,
+  readParentBudgetUnit,
   resolveDv360Currency,
   type Dv360ServiceLike,
 } from "./capture-snapshot.js";
@@ -104,6 +106,8 @@ export function applyDv360Patch(
       setPath(applied, field, v);
     }
   }
+  // The unit is output-only: the pre-state's is the platform's, a patch cannot set it.
+  pinLineItemBudgetUnit(entityType, applied, lineItemBudgetUnitOf(preState));
   const snapshot = buildDv360Snapshot(entityType, ids, preState, applied, currency);
   return snapshot ?? undefined;
 }
@@ -198,15 +202,18 @@ export async function runDv360CreateDryRun(
   let expectedPostState: NormalizedEntitySnapshot | undefined;
   let expectedStateSource: DryRunResult["expectedStateSource"] = "none";
   if (ENTITY_KIND_MAP[args.entityType]) {
-    // `budget.budgetUnit` is output-only: a create payload does not carry it, so
-    // the new line item's unit is its parent insertion order's.
-    const data = await inheritLineItemBudgetUnit(
+    // `budget.budgetUnit` is output-only: the new line item inherits it from its
+    // parent insertion order, so that is the unit, whatever the payload claims.
+    const data = deepClone(args.data);
+    const parentUnit = await readParentBudgetUnit(
       dv360Service,
       args.entityType,
       args.ids,
-      args.data,
+      data,
       context
     );
+    const conflict = pinLineItemBudgetUnit(args.entityType, data, parentUnit);
+    if (conflict) validationErrors.push(conflict);
     const unitError = lineItemBudgetUnitUndetermined(args.entityType, {}, data);
     if (unitError) validationErrors.push(unitError);
     const currency = await resolveDv360Currency(dv360Service, args.entityType, args.ids, context);
@@ -365,9 +372,17 @@ export async function runDv360UpdateDryRun(
   let expectedPostState: NormalizedEntitySnapshot | undefined;
   let expectedStateSource: DryRunResult["expectedStateSource"] = "none";
   if (current) {
-    // A mask that replaces the whole `budget` drops the output-only
-    // `budgetUnit`; the snapshot takes it from `current`. If it has none to
-    // take, the budget is of unknown size and the dry run says so.
+    // `budgetUnit` is output-only: the current line item's is the platform's,
+    // and a mask that replaces the whole `budget` neither carries it nor can
+    // change it. A unit in the payload is replaced by the current one (and
+    // refused if it differs); if the current line item has none, the budget is
+    // of unknown size and the dry run says so.
+    const conflict = pinLineItemBudgetUnit(
+      input.entityType,
+      applied,
+      lineItemBudgetUnitOf(current)
+    );
+    if (conflict) validationErrors.push(conflict);
     const unitError = lineItemBudgetUnitUndetermined(input.entityType, current, applied);
     if (unitError) validationErrors.push(unitError);
     const currency = await resolveDv360Currency(dv360Service, input.entityType, input.ids, context);

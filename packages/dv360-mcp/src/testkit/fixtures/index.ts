@@ -27,9 +27,11 @@
  * `segments`). A line item with no fixed currency amount (UNLIMITED or
  * AUTOMATIC allocation, impression-based unit) leaves `lifetime` null.
  * `budgetUnit` is output-only (inherited from the parent insertion order), so
- * a snapshot of a payload that omits it takes the unit from the entity it
- * replaces, or, for a create, from the parent insertion order; with neither it
- * is unknown (the dry run fails with BUDGET_UNIT_UNDETERMINED), never 0.
+ * a unit in a caller's payload is never used: the snapshot takes it from the
+ * entity it replaces, or, for a create, from the parent insertion order. A
+ * payload unit that contradicts it fails the dry run (BUDGET_UNIT_CONFLICT),
+ * and with no authoritative unit the budget is unknown (BUDGET_UNIT_UNDETERMINED),
+ * never 0.
  */
 
 import type { Dv360WriteFixture } from "../types.js";
