@@ -47,7 +47,9 @@
         "modes": ["google-headers", "jwt", "none"]
       },
       "tags": ["advertising", "reporting", "dv360", "bid-manager", "google"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": []
       }
@@ -125,7 +127,9 @@
         "programmatic",
         "self-hosted"
       ],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -250,7 +254,9 @@
         "programmatic",
         "graphql"
       ],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -355,7 +361,9 @@
         "modes": ["gads-headers", "jwt", "none"]
       },
       "tags": ["advertising", "google-ads", "campaign-management", "gaql", "search", "self-hosted"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -457,7 +465,9 @@
         "social",
         "self-hosted"
       ],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -542,7 +552,9 @@
         "modes": ["linkedin-bearer", "jwt", "none"]
       },
       "tags": ["advertising", "linkedin", "campaign-management", "social", "b2b"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -629,7 +641,9 @@
         "modes": ["tiktok-bearer", "jwt", "none"]
       },
       "tags": ["advertising", "tiktok", "campaign-management", "social", "video"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -712,7 +726,9 @@
         "modes": ["google-headers", "jwt", "none"]
       },
       "tags": ["advertising", "cm360", "google", "campaign-management", "ad-serving"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -807,7 +823,9 @@
         "modes": ["snapchat-bearer", "jwt", "none"]
       },
       "tags": ["advertising", "snapchat", "campaign-management", "social", "video"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -873,7 +891,9 @@
         "modes": ["sa360-headers", "jwt", "none"]
       },
       "tags": ["advertising", "sa360", "google", "search", "conversions", "reporting"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": []
       }
@@ -942,7 +962,9 @@
         "modes": ["pinterest-bearer", "jwt", "none"]
       },
       "tags": ["advertising", "pinterest", "campaign-management", "social", "visual"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -1030,7 +1052,9 @@
         "modes": ["amazon-dsp-bearer", "jwt", "none"]
       },
       "tags": ["advertising", "amazon", "dsp", "campaign-management", "programmatic", "ecommerce"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {
@@ -1080,7 +1104,10 @@
         "msads_search_tools",
         "msads_duplicate_entity",
         "msads_get_targeting_options",
-        "msads_get_pacing_status"
+        "msads_get_pacing_status",
+        "msads_get_conversion_goals",
+        "msads_get_negative_keyword_lists",
+        "msads_get_negative_keywords"
       ],
       "resources": [
         "msads://entity-hierarchy",
@@ -1104,7 +1131,9 @@
         "modes": ["msads-bearer", "jwt", "none"]
       },
       "tags": ["advertising", "microsoft", "bing", "campaign-management", "search", "import"],
-      "untrustedContent": { "pathReporting": "per-response" },
+      "untrustedContent": {
+        "pathReporting": "per-response"
+      },
       "operational": {
         "terminalOperations": [
           {

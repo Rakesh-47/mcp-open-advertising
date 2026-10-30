@@ -56,18 +56,21 @@ All reporting tools below accept the shared bounded report-view params: `mode` (
 
 ### Specialized
 
-| Tool                          | Description                                      |
-| ----------------------------- | ------------------------------------------------ |
-| `msads_manage_ad_extensions`  | Manage ad extensions (sitelinks, callouts, etc.) |
-| `msads_manage_criterions`     | Manage targeting criterions                      |
-| `msads_search_targeting`      | Search available targeting options               |
-| `msads_get_ad_details`        | Get stored ad details (copy, URLs, status)       |
-| `msads_validate_entity`       | Validate entity payload                          |
-| `msads_import_from_google`    | Import campaigns from Google Ads                 |
-| `msads_duplicate_entity`      | Copy a campaign (always created `Paused`)        |
-| `msads_get_targeting_options` | Static criterion values for `manage_criterions`  |
-| `msads_get_pacing_status`     | Client-side pacing calculator (no API call)      |
-| `msads_search_tools`          | Rank this server's tools against a query         |
+| Tool                               | Description                                      |
+| ---------------------------------- | ------------------------------------------------ |
+| `msads_manage_ad_extensions`       | Manage ad extensions (sitelinks, callouts, etc.) |
+| `msads_manage_criterions`          | Manage targeting criterions                      |
+| `msads_search_targeting`           | Search available targeting options               |
+| `msads_get_ad_details`             | Get stored ad details (copy, URLs, status)       |
+| `msads_get_negative_keywords`      | Read negatives on campaigns or ad groups         |
+| `msads_get_negative_keyword_lists` | Read shared negative keyword lists               |
+| `msads_get_conversion_goals`       | Read conversion goal settings                    |
+| `msads_validate_entity`            | Validate entity payload                          |
+| `msads_import_from_google`         | Import campaigns from Google Ads                 |
+| `msads_duplicate_entity`           | Copy a campaign (always created `Paused`)        |
+| `msads_get_targeting_options`      | Static criterion values for `manage_criterions`  |
+| `msads_get_pacing_status`          | Client-side pacing calculator (no API call)      |
+| `msads_search_tools`               | Rank this server's tools against a query         |
 
 ### Report Schedules (not supported by the platform)
 

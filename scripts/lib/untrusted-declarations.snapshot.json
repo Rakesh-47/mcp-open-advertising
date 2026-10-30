@@ -741,8 +741,20 @@
       "structuredPaths": ["$.ads"],
       "contentBlocks": [0]
     },
+    "msads_get_conversion_goals": {
+      "structuredPaths": ["$.entities"],
+      "contentBlocks": [0]
+    },
     "msads_get_entity": {
       "structuredPaths": ["$.entity"],
+      "contentBlocks": [0]
+    },
+    "msads_get_negative_keyword_lists": {
+      "structuredPaths": ["$.entities"],
+      "contentBlocks": [0]
+    },
+    "msads_get_negative_keywords": {
+      "structuredPaths": ["$.entities"],
       "contentBlocks": [0]
     },
     "msads_get_pacing_status": {
