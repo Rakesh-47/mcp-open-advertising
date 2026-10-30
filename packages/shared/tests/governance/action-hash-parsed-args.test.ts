@@ -33,7 +33,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { hashActionInput, canonicalizeExecutableArgs } from "@cesteral/contract-hash";
-import { installRawToolArgsCapture, getRawToolArgs } from "../../src/utils/raw-tool-args.js";
+import { installRawToolArgsCapture, getRawToolArgs } from "../../src/utils/mcp/raw-tool-args.js";
 
 interface Probe {
   /** What the SDK handed the tool handler (post-validation). */

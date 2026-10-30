@@ -21,7 +21,7 @@ import { z } from "zod";
 import * as jose from "jose";
 import { hashActionInput, canonicalizeExecutableArgs } from "@cesteral/contract-hash";
 
-vi.mock("../../src/utils/telemetry.js", () => ({
+vi.mock("../../src/utils/observability/telemetry.js", () => ({
   withToolSpan: vi.fn().mockImplementation((_name, _input, fn) => fn({})),
   withSpan: vi.fn().mockImplementation((_name, fn) => fn()),
   setSpanAttribute: vi.fn(),
@@ -31,10 +31,13 @@ vi.mock("../../src/utils/telemetry.js", () => ({
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { registerToolsFromDefinitions } from "../../src/utils/tool-handler-factory.js";
-import { runWithRequestContext, createRequestContext } from "../../src/utils/request-context.js";
+import { registerToolsFromDefinitions } from "../../src/utils/mcp/tool-handler-factory.js";
+import {
+  runWithRequestContext,
+  createRequestContext,
+} from "../../src/utils/observability/request-context.js";
 import { InMemoryJtiStore } from "../../src/index.js";
-import { extractZodShape } from "../../src/utils/zod-helpers.js";
+import { extractZodShape } from "../../src/utils/mcp/zod-helpers.js";
 import type { Logger } from "pino";
 
 const SECRET = "test-secret-10f2-aaaaaaaaaaaaaaaaaaaa";

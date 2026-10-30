@@ -10,7 +10,11 @@ import {
 import { extractEntityIds, EntityIdFieldsSchema } from "../utils/entity-id-extraction.js";
 import { addIdValidationIssues } from "../utils/parent-id-validation.js";
 import { runDv360DeleteDryRun, resolveDv360DeleteCapability } from "../utils/dry-run.js";
-import { snapshotFromDv360Entity, buildDv360Snapshot } from "../utils/capture-snapshot.js";
+import {
+  snapshotFromDv360Entity,
+  buildDv360Snapshot,
+  resolveDv360Currency,
+} from "../utils/capture-snapshot.js";
 import {
   elicitDeleteConfirmation,
   createLogger,
@@ -148,10 +152,13 @@ export async function deleteEntityLogic(
     );
   }
 
+  // The advertiser's currency denominates both snapshots' amounts.
+  const currency = await resolveDv360Currency(dv360Service, input.entityType, entityIds, context);
   const before: NormalizedEntitySnapshot | undefined = snapshotFromDv360Entity(
     input.entityType,
     entityIds,
-    entityBeforeDeletion
+    entityBeforeDeletion,
+    currency
   );
 
   await dv360Service.deleteEntity(input.entityType, entityIds, context);
@@ -167,10 +174,13 @@ export async function deleteEntityLogic(
   // DV360 hard-deletes; a re-read 404s. The post-state is the pre-delete entity
   // with canonical status `deleted` (undefined for out-of-scope kinds).
   const after: NormalizedEntitySnapshot | undefined =
-    buildDv360Snapshot(input.entityType, entityIds, entityBeforeDeletion, {
-      ...entityBeforeDeletion,
-      entityStatus: "ENTITY_STATUS_DELETED",
-    }) ?? undefined;
+    buildDv360Snapshot(
+      input.entityType,
+      entityIds,
+      entityBeforeDeletion,
+      { ...entityBeforeDeletion, entityStatus: "ENTITY_STATUS_DELETED" },
+      currency
+    ) ?? undefined;
 
   return {
     confirmed: true,

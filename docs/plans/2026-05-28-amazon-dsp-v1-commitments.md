@@ -1,5 +1,7 @@
 # Amazon DSP v1 Commitments Implementation Plan
 
+> **Status (checked 2026-10-12):** Implemented (the `amazon_dsp_*commitment*` tools exist in `amazon-dsp-mcp`).
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Extend `amazon-dsp-mcp` with 7 new tools wrapping the Amazon Ads API v1 DSP endpoints: `list_commitments`, `get_commitments` (batch read), `get_commitment` (singular read — read partner for the governed update), `create_commitment` (ungoverned single write), `update_commitment` (governed single write), `get_campaign_forecast`, `get_commitment_spend`. Plus one small additive change in `@cesteral/shared` covering both the TS union and the Zod enum for `CanonicalEntityKind`.

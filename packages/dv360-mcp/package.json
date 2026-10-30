@@ -1,7 +1,7 @@
 {
   "name": "@cesteral/dv360-mcp",
   "mcpName": "io.github.cesteral/dv360-mcp",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "DV360 MCP Server - Campaign entity management and configuration",
   "license": "Apache-2.0",
   "repository": {
@@ -62,7 +62,7 @@
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.17.6",
+    "@types/node": "^22.20.5",
     "js-yaml": "^4.1.1",
     "minimatch": "^10.1.1",
     "openapi-typescript": "^7.10.1",

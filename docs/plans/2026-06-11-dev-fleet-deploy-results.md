@@ -1,5 +1,7 @@
 # Dev Fleet First Deploy — Results (2026-06-11)
 
+> **Status (checked 2026-10-12):** Point-in-time result (2026-06-11). The load balancer was later lost and rebuilt: `docs/runbooks/2026-07-27-dev-fleet-lb-recovery.md`.
+
 The full 13-server MCP fleet is **live on Cloud Run** in
 `open-agentic-advertising-dev`, **IAM-locked** (no public access), all services
 healthy.

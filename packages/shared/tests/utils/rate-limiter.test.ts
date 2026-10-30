@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("../../src/utils/metrics.js", () => ({ recordRateLimitHit: vi.fn() }));
+vi.mock("../../src/utils/observability/metrics.js", () => ({ recordRateLimitHit: vi.fn() }));
 
 import {
   RateLimiter,
   createPlatformRateLimiter,
   PLATFORM_RATE_LIMIT_WINDOW_MS,
   PLATFORM_RATE_LIMIT_MAX_WAIT_MS,
-} from "../../src/utils/rate-limiter.js";
-import { executeBulkConcurrent } from "../../src/utils/bulk-executor.js";
+} from "../../src/utils/http/rate-limiter.js";
+import { executeBulkConcurrent } from "../../src/utils/mcp/bulk-executor.js";
 import { McpError, JsonRpcErrorCode } from "../../src/utils/mcp-errors.js";
-import { recordRateLimitHit } from "../../src/utils/metrics.js";
+import { recordRateLimitHit } from "../../src/utils/observability/metrics.js";
 
 /** Track when (fake time) each promise settles, and how. */
 function track(p: Promise<void>) {

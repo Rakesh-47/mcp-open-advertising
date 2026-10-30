@@ -5,7 +5,7 @@ import {
   crossPlatformPerformancePrompt,
   getCrossPlatformCampaignSetupMessage,
   getCrossPlatformPerformanceMessage,
-} from "../../src/utils/cross-platform-prompts.js";
+} from "../../src/utils/mcp/cross-platform-prompts.js";
 import * as sharedRoot from "../../src/index.js";
 
 describe("cross-platform prompt metadata", () => {

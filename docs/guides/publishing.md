@@ -46,7 +46,7 @@ The Docker publish is part of the deploy flow — there's no standalone "publish
 ./scripts/deploy.sh <dev|prod> --plan-only # builds + pushes, but only Terraform-plans
 ```
 
-Cloud Build runs the same flow on push via `cloudbuild.yaml`.
+`cloudbuild.yaml` runs the build, scan and push half of this in Cloud Build. It deploys only with `_DEPLOY=true`, which needs a deploying service account (see [deployment-instructions.md](deployment-instructions.md)).
 
 ### Manual image build (without Terraform)
 
@@ -190,6 +190,8 @@ The **routine release path is now the tag-triggered `.github/workflows/release.y
 4. **Commit** the version + manifest changes; merge to `main`
 5. **Tag the release** — push a `vX.Y.Z` git tag; `release.yml` picks it up and runs the rest of the pipeline.
 6. **Smoke-test hosted:** `./scripts/deploy.sh dev` → verify → `./scripts/deploy.sh prod` → `./scripts/smoke-test.sh prod`
+
+Release notes need no manual step: `release.yml` creates the GitHub Release with `--generate-notes`, built from the merged PR titles since the previous tag. The repo has no `CHANGELOG.md` to update.
 
 `./scripts/publish-all.sh` remains supported as a manual **break-glass** fallback — a manual run still generates manifests, but only a CI run from `release.yml` produces npm provenance attestations. When running it by hand: refresh auth first (`npm whoami` resolves, `mcp-publisher login github` run recently — its JWT is ~10 min), then `./scripts/publish-all.sh` (npm → MCP Registry). The script's pack-and-inspect gate validates every tarball before any publish; conflict-regex tolerance makes re-runs idempotent if anything partial lands.
 

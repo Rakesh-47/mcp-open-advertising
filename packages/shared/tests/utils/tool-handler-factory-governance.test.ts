@@ -6,7 +6,7 @@ import { z } from "zod";
 import * as jose from "jose";
 import { hashActionInput, canonicalizeExecutableArgs } from "@cesteral/contract-hash";
 
-vi.mock("../../src/utils/telemetry.js", () => ({
+vi.mock("../../src/utils/observability/telemetry.js", () => ({
   withToolSpan: vi.fn().mockImplementation((_name, _input, fn) => fn({})),
   withSpan: vi.fn().mockImplementation((_name, fn) => fn()),
   setSpanAttribute: vi.fn(),
@@ -16,8 +16,11 @@ vi.mock("../../src/utils/telemetry.js", () => ({
 import {
   registerToolsFromDefinitions,
   evaluateJtiStoreEnforcementSafety,
-} from "../../src/utils/tool-handler-factory.js";
-import { runWithRequestContext, createRequestContext } from "../../src/utils/request-context.js";
+} from "../../src/utils/mcp/tool-handler-factory.js";
+import {
+  runWithRequestContext,
+  createRequestContext,
+} from "../../src/utils/observability/request-context.js";
 import { InMemoryJtiStore } from "../../src/index.js";
 import type { JtiStore, ManifestEntryRef } from "../../src/index.js";
 import type { SessionAuthContext } from "../../src/auth/auth-strategy.js";
@@ -542,7 +545,7 @@ describe("tool-handler-factory governance verification", () => {
   // Sweep 2026-07-25, 10-F1. This test was named "injected distributed store"
   // and injected an `InMemoryJtiStore`, pinning the in-memory-under-enforce case
   // as safe. That is the defect: the guard keyed on `Boolean(opts.jtiStore)`, so
-  // following half of CLAUDE.md §6's remediation — wiring `selectJtiStore(...)`
+  // following half of governance-runtime.md's remediation — wiring `selectJtiStore(...)`
   // without `GOVERNANCE_JTI_STORE=firestore` — produced silence instead of the
   // throw the unwired case correctly gets.
   it("P3: hosted + injected NON-distributed store still throws (10-F1)", () => {

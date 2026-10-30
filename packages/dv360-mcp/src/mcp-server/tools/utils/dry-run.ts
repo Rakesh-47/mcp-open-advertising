@@ -30,7 +30,16 @@ import type {
   NormalizedEntitySnapshot,
   RequestContext,
 } from "@cesteral/shared";
-import { buildDv360Snapshot, ENTITY_KIND_MAP, type Dv360ServiceLike } from "./capture-snapshot.js";
+import {
+  buildDv360Snapshot,
+  ENTITY_KIND_MAP,
+  lineItemBudgetUnitOf,
+  lineItemBudgetUnitUndetermined,
+  pinLineItemBudgetUnit,
+  readParentBudgetUnit,
+  resolveDv360Currency,
+  type Dv360ServiceLike,
+} from "./capture-snapshot.js";
 import { getEntityConfigDynamic, requiresArchiveBeforeDelete } from "./entity-mapping-dynamic.js";
 
 export type { Dv360ServiceLike };
@@ -70,14 +79,22 @@ export function deepClone<T>(v: T): T {
  * Symbolic apply: overlay patch fields named in updateMask onto a clone of
  * `preState`, then normalize. Pure (no I/O). Used by the testkit's
  * `assertContract` against fixture pairs and also by the dry-run handler.
+ * `currency` is the advertiser's ISO 4217 code, which `preState` does not carry.
  */
 export function applyDv360Patch(
   entityType: string,
   ids: Record<string, string>,
   preState: Record<string, unknown>,
   data: Record<string, unknown>,
-  updateMask: string
+  updateMask: string,
+  currency: string
 ): NormalizedEntitySnapshot | undefined {
+  if (typeof currency !== "string") {
+    throw new TypeError(
+      "applyDv360Patch requires the advertiser's ISO 4217 currency as its last argument: DV360 " +
+        "amounts are micros of it and the entity does not carry it."
+    );
+  }
   const applied: Record<string, any> = deepClone(preState);
   const maskFields = updateMask
     .split(",")
@@ -89,7 +106,9 @@ export function applyDv360Patch(
       setPath(applied, field, v);
     }
   }
-  const snapshot = buildDv360Snapshot(entityType, ids, preState, applied);
+  // The unit is output-only: the pre-state's is the platform's, a patch cannot set it.
+  pinLineItemBudgetUnit(entityType, applied, lineItemBudgetUnitOf(preState));
+  const snapshot = buildDv360Snapshot(entityType, ids, preState, applied, currency);
   return snapshot ?? undefined;
 }
 
@@ -169,12 +188,13 @@ export interface Dv360CreateDryRunArgs {
  * entity (symbolic apply of the create payload over an empty base — create has
  * no `before`). The new entity has no ID pre-create, so `platformEntityId` is
  * the empty-string placeholder (the parent IDs in `ids` only supply
- * `accountId`). Pure (no I/O).
+ * `accountId`). The only I/O is the advertiser's currency, which the snapshot's
+ * amounts are denominated in (read once per advertiser and session).
  */
 export async function runDv360CreateDryRun(
   args: Dv360CreateDryRunArgs,
-  _dv360Service: Dv360ServiceLike,
-  _context: RequestContext,
+  dv360Service: Dv360ServiceLike,
+  context: RequestContext,
   validateOperation?: (entityType: string, data: Record<string, unknown>) => DryRunValidationError[]
 ): Promise<DryRunResult> {
   const validationErrors = validateOperation ? validateOperation(args.entityType, args.data) : [];
@@ -182,7 +202,22 @@ export async function runDv360CreateDryRun(
   let expectedPostState: NormalizedEntitySnapshot | undefined;
   let expectedStateSource: DryRunResult["expectedStateSource"] = "none";
   if (ENTITY_KIND_MAP[args.entityType]) {
-    const snapshot = buildDv360Snapshot(args.entityType, args.ids, {}, args.data);
+    // `budget.budgetUnit` is output-only: the new line item inherits it from its
+    // parent insertion order, so that is the unit, whatever the payload claims.
+    const data = deepClone(args.data);
+    const parentUnit = await readParentBudgetUnit(
+      dv360Service,
+      args.entityType,
+      args.ids,
+      data,
+      context
+    );
+    const conflict = pinLineItemBudgetUnit(args.entityType, data, parentUnit);
+    if (conflict) validationErrors.push(conflict);
+    const unitError = lineItemBudgetUnitUndetermined(args.entityType, {}, data);
+    if (unitError) validationErrors.push(unitError);
+    const currency = await resolveDv360Currency(dv360Service, args.entityType, args.ids, context);
+    const snapshot = buildDv360Snapshot(args.entityType, args.ids, {}, data, currency);
     if (snapshot) {
       expectedPostState = { ...snapshot, platformEntityId: "" };
       expectedStateSource = "server_symbolic_apply";
@@ -254,10 +289,14 @@ export async function runDv360DeleteDryRun(
           field: "entityStatus",
         });
       }
-      const snapshot = buildDv360Snapshot(args.entityType, args.ids, current, {
-        ...current,
-        entityStatus: "ENTITY_STATUS_DELETED",
-      });
+      const currency = await resolveDv360Currency(dv360Service, args.entityType, args.ids, context);
+      const snapshot = buildDv360Snapshot(
+        args.entityType,
+        args.ids,
+        current,
+        { ...current, entityStatus: "ENTITY_STATUS_DELETED" },
+        currency
+      );
       if (snapshot) {
         expectedPostState = snapshot;
         expectedStateSource = "server_symbolic_apply";
@@ -333,7 +372,21 @@ export async function runDv360UpdateDryRun(
   let expectedPostState: NormalizedEntitySnapshot | undefined;
   let expectedStateSource: DryRunResult["expectedStateSource"] = "none";
   if (current) {
-    const snapshot = buildDv360Snapshot(input.entityType, input.ids, current, applied);
+    // `budgetUnit` is output-only: the current line item's is the platform's,
+    // and a mask that replaces the whole `budget` neither carries it nor can
+    // change it. A unit in the payload is replaced by the current one (and
+    // refused if it differs); if the current line item has none, the budget is
+    // of unknown size and the dry run says so.
+    const conflict = pinLineItemBudgetUnit(
+      input.entityType,
+      applied,
+      lineItemBudgetUnitOf(current)
+    );
+    if (conflict) validationErrors.push(conflict);
+    const unitError = lineItemBudgetUnitUndetermined(input.entityType, current, applied);
+    if (unitError) validationErrors.push(unitError);
+    const currency = await resolveDv360Currency(dv360Service, input.entityType, input.ids, context);
+    const snapshot = buildDv360Snapshot(input.entityType, input.ids, current, applied, currency);
     if (snapshot) {
       expectedPostState = snapshot;
       expectedStateSource = "server_symbolic_apply";
@@ -421,7 +474,10 @@ export async function runDv360DuplicateDryRun(
         entityStatus: landingStatus,
         ...(copyName != null ? { displayName: copyName } : {}),
       };
-      const snapshot = buildDv360Snapshot(args.entityType, args.ids, source, applied);
+      const unitError = lineItemBudgetUnitUndetermined(args.entityType, source, applied);
+      if (unitError) validationErrors.push(unitError);
+      const currency = await resolveDv360Currency(dv360Service, args.entityType, args.ids, context);
+      const snapshot = buildDv360Snapshot(args.entityType, args.ids, source, applied, currency);
       if (snapshot) {
         // The copy has no entity ID yet pre-duplicate; the parent IDs would
         // otherwise mislabel platformEntityId with the source's ID.

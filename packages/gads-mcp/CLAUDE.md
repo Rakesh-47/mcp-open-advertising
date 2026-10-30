@@ -1,0 +1,5 @@
+# gads-mcp
+
+Platform notes for this package: quirks that are easy to forget when editing it. Repo-wide conventions are in the [root CLAUDE.md](../../CLAUDE.md).
+
+`gads_duplicate_entity` copies campaigns only (GAQL read + `campaigns:mutate` create, no native copy) and always creates the copy `PAUSED` — `Resources__Campaign.status` defaults to `ENABLED` on create, so a copy of a live campaign would otherwise spend at once; a `status` in `options` is ignored, as on dv360, msads, pinterest and snapchat. The copy carries the source's bidding (portfolio `biddingStrategy`, or its standard scheme and parameters; types it cannot copy faithfully, e.g. `TARGET_CPM`, are refused). Because the customer's time zone is unknown, dates are compared against UTC+14: a start that may have passed is omitted, and an end that may have passed is refused unless `options.endDateTime` sets one (or `null`). Changes are listed in `copyAdjustments`. The bidding SELECT fields' GAQL selectability is unverified (#237).

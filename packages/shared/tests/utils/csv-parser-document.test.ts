@@ -2,7 +2,7 @@
 // See LICENSE.md in the project root for full license terms.
 
 import { describe, expect, it } from "vitest";
-import { parseCSV } from "../../src/utils/csv-parser.js";
+import { parseCSV } from "../../src/utils/reporting/csv-parser.js";
 
 describe("parseCSV", () => {
   it("parses headers and rows", () => {

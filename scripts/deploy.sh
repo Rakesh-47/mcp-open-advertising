@@ -47,21 +47,12 @@ esac
 REGION="europe-west2"
 REPO_NAME="cesteral"
 GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "local")
-SERVERS=(
-  "dbm-mcp"
-  "dv360-mcp"
-  "ttd-mcp"
-  "gads-mcp"
-  "meta-mcp"
-  "linkedin-mcp"
-  "tiktok-mcp"
-  "cm360-mcp"
-  "sa360-mcp"
-  "pinterest-mcp"
-  "snapchat-mcp"
-  "amazon-dsp-mcp"
-  "msads-mcp"
-)
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# The server list comes from registry.json (scripts/fleet.mjs). Captured
+# before splitting so `set -e` stops the script if the lookup fails.
+SERVER_LIST="$(node "$REPO_ROOT/scripts/fleet.mjs" servers)"
+# shellcheck disable=SC2206 # package names contain no spaces or globs
+SERVERS=($SERVER_LIST)
 
 print_info "Environment: $ENVIRONMENT"
 print_info "Project ID: $PROJECT_ID"
@@ -109,9 +100,16 @@ TF_ARGS=(
   -var="artifact_registry_repo_name=${REPO_NAME}"
   -var-file="${ENVIRONMENT}.tfvars"
 )
-for SERVER in "${SERVERS[@]}"; do
-  TF_ARGS+=(-var="${SERVER//-/_}_image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVER}:${IMAGE_TAG_REF}")
-done
+# The mcp_images map (keyed by package) as a var file. It comes after the
+# tfvars, so these images win over any set there.
+TF_TMP="$(mktemp -d)"
+trap 'rm -rf "$TF_TMP"' EXIT
+node -e '
+  const [file, prefix, tag, ...servers] = process.argv.slice(1);
+  const images = Object.fromEntries(servers.map((s) => [s, `${prefix}/${s}:${tag}`]));
+  require("fs").writeFileSync(file, JSON.stringify({ mcp_images: images }));
+' "$TF_TMP/mcp-images.tfvars.json" "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}" "$IMAGE_TAG_REF" "${SERVERS[@]}"
+TF_ARGS+=(-var-file="$TF_TMP/mcp-images.tfvars.json")
 
 # First-apply guard: init-gcp-project.sh creates the Artifact Registry repo
 # via gcloud (it must exist before this script can push images), but the repo
@@ -128,7 +126,13 @@ if ! terraform state list 2>/dev/null | grep -q '^google_artifact_registry_repos
 fi
 
 print_step "Running Terraform plan..."
-terraform plan "${TF_ARGS[@]}" -out=tfplan
+terraform plan "${TF_ARGS[@]}" -out=tfplan 2>&1 | tee "$TF_TMP/plan.log"
+# Terraform only warns when a tfvars file sets a variable that does not exist,
+# so a renamed variable would otherwise fall back to its default unnoticed.
+if grep -q 'undeclared variable' "$TF_TMP/plan.log"; then
+  print_error "${ENVIRONMENT}.tfvars sets variables Terraform does not declare (see the warning above). Fix the tfvars before deploying."
+  exit 1
+fi
 
 if [ "$PLAN_ONLY" = true ]; then
   print_warn "Plan-only mode: Terraform changes not applied"
@@ -156,9 +160,9 @@ print_step "Running post-deploy health checks..."
 # identity token (project owners/run.admins hold run.routes.invoke).
 IDENTITY_TOKEN=$(gcloud auth print-identity-token 2>/dev/null || echo "")
 FAILED_SERVICES=""
+SERVICE_URLS_JSON=$(terraform output -json service_urls 2>/dev/null || echo "{}")
 for SERVER in "${SERVERS[@]}"; do
-  OUTPUT_NAME="${SERVER//-/_}_service_url"
-  SERVER_URL=$(terraform output -raw "$OUTPUT_NAME" 2>/dev/null || echo "")
+  SERVER_URL=$(node -e 'process.stdout.write(JSON.parse(process.argv[1])[process.argv[2]] ?? "")' "$SERVICE_URLS_JSON" "$SERVER")
   if [ -z "$SERVER_URL" ]; then
     print_warn "Could not get URL for $SERVER"
     continue

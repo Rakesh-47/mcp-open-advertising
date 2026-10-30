@@ -11,7 +11,7 @@
 // client asking the same prompt of two servers got two different answers
 // about money units.
 //
-// They now live in @cesteral/shared (utils/cross-platform-prompts.ts). This
+// They now live in @cesteral/shared (utils/mcp/cross-platform-prompts.ts). This
 // suite keeps it that way, over the wire:
 //   1. every server that registers either prompt publishes metadata and
 //      renders text byte-identical to the shared module, for the same args;
@@ -27,7 +27,15 @@ import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import { withServerClient, ROOT } from "./boot-server.mjs";
 
-const sharedModule = join(ROOT, "packages", "shared", "dist", "utils", "cross-platform-prompts.js");
+const sharedModule = join(
+  ROOT,
+  "packages",
+  "shared",
+  "dist",
+  "utils",
+  "mcp",
+  "cross-platform-prompts.js"
+);
 if (!existsSync(sharedModule)) {
   throw new Error(`${sharedModule} not found. Build @cesteral/shared before this suite.`);
 }

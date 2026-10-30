@@ -5,8 +5,8 @@ import {
   getRequestContext,
   getRequestId,
   extractRequestId,
-} from "../src/utils/request-context.js";
-import type { RequestContext } from "../src/utils/request-context.js";
+} from "../src/utils/observability/request-context.js";
+import type { RequestContext } from "../src/utils/observability/request-context.js";
 
 describe("createRequestContext", () => {
   it("creates context with requestId and service", () => {

@@ -3,8 +3,8 @@
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import pino from "pino";
-import { executeWithRetry } from "../../src/utils/retryable-fetch.js";
-import type { RetryConfig, FetchWithTimeoutFn } from "../../src/utils/retryable-fetch.js";
+import { executeWithRetry } from "../../src/utils/http/retryable-fetch.js";
+import type { RetryConfig, FetchWithTimeoutFn } from "../../src/utils/http/retryable-fetch.js";
 import { McpError, JsonRpcErrorCode } from "../../src/utils/mcp-errors.js";
 
 const logger = pino({ level: "silent" });

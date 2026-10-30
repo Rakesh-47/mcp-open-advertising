@@ -122,7 +122,7 @@ Records are redacted before they leave the process. The redactor strips:
 - **Response bodies**: truncated at 8 KB to prevent accidental PII spillover
 
 The redaction surface lives in
-[`http-request-recorder.ts`](../../packages/shared/src/utils/http-request-recorder.ts)
+[`http-request-recorder.ts`](../../packages/shared/src/utils/observability/http-request-recorder.ts)
 and is unit-tested. If a platform-specific header gets added that contains
 credentials, add it to the redactor — that's the single place to extend.
 
@@ -169,6 +169,6 @@ A short summary you can hand to your security review:
 
 ## See also
 
-- [`packages/shared/src/utils/interaction-logger.ts`](../../packages/shared/src/utils/interaction-logger.ts) — implementation
-- [`packages/shared/src/utils/http-request-recorder.ts`](../../packages/shared/src/utils/http-request-recorder.ts) — upstream capture + redaction
-- [`CLAUDE.md`](../../CLAUDE.md#tool-failure-logging) — internal reference (record shape, env vars)
+- [`packages/shared/src/utils/observability/interaction-logger.ts`](../../packages/shared/src/utils/observability/interaction-logger.ts) — implementation
+- [`packages/shared/src/utils/observability/http-request-recorder.ts`](../../packages/shared/src/utils/observability/http-request-recorder.ts) — upstream capture + redaction
+- [`tool-failure-logging.md`](../architecture/tool-failure-logging.md) — internal reference (record shape, env vars)

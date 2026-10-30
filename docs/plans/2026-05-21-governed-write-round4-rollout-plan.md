@@ -1,5 +1,7 @@
 # Governed Write-Tool Rollout — Round 4 (CM360 + Snapchat + Pinterest + Microsoft Ads)
 
+> **Status (checked 2026-10-12):** Implemented. The write tools of cm360, snapchat, pinterest and msads carry the `cesteral` annotation. The three verification boxes at the end were never ticked.
+
 > **For Claude:** REQUIRED SUB-SKILL: use `superpowers:executing-plans` to implement this plan task-by-task.
 >
 > **Two-repo plan.** Tasks tagged **[UPSTREAM]** belong to `cesteral-mcp-servers` (`cesteral/mcp-open-advertising`); tasks tagged **[GOV]** belong to the governance repo (`cesteral/cesteral-governance-layer`, checked out locally as `cesteral-intelligence`). This is the continuation of `cesteral-intelligence/docs/plans/2026-05-20-governed-write-platform-rollout-plan.md`, which covered Rounds 2–3 — read its §Architecture and the companion design doc first. Round 4 adds **no new contract surface**; it applies the now-proven contract to the four remaining entity-mutation servers.

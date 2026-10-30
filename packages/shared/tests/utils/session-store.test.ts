@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SessionServiceStore } from "../../src/utils/session-store.js";
+import { SessionServiceStore } from "../../src/utils/transport/session-store.js";
 
 interface MockServices {
   serviceA: string;

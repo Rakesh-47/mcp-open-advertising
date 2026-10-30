@@ -312,10 +312,8 @@ Comprehensive documentation available in `docs/`:
 
 - **[CLAUDE_DESKTOP_SETUP.md](./docs/CLAUDE_DESKTOP_SETUP.md)** - Claude Desktop integration guide ⭐
 - **[SERVICE_ACCOUNT_SETUP.md](./docs/SERVICE_ACCOUNT_SETUP.md)** - GCP service account setup
-- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - Detailed architecture overview
-- **[DYNAMIC_ENTITY_SYSTEM.md](./docs/internal/DYNAMIC_ENTITY_SYSTEM.md)** - Entity mapping system
-- **[ENTITY-EXAMPLES-INTEGRATION.md](./docs/internal/ENTITY-EXAMPLES-INTEGRATION.md)** - Usage patterns
-- **[OPENTELEMETRY-IMPLEMENTATION.md](./docs/internal/OPENTELEMETRY-IMPLEMENTATION.md)** - Observability setup
+- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - Architecture, dynamic entity schema, and generated schemas
+- **[openapi-schema-extraction-spec.md](./docs/openapi-schema-extraction-spec.md)** - Design of the schema extraction pipeline
 
 ## Troubleshooting
 

@@ -28,17 +28,17 @@ import {
   type McpHttpServer,
   type TransportFactoryConfig,
   type TransportFactoryAppConfig,
-} from "../../src/utils/mcp-http-transport-factory.js";
-import { SessionServiceStore } from "../../src/utils/session-store.js";
+} from "../../src/utils/transport/mcp-http-transport-factory.js";
+import { SessionServiceStore } from "../../src/utils/transport/session-store.js";
 import { NoAuthStrategy } from "../../src/auth/auth-strategy.js";
 import {
   registerToolsFromDefinitions,
   type ToolDefinitionForFactory,
   type ToolSdkContext,
-} from "../../src/utils/tool-handler-factory.js";
-import { extractZodShape } from "../../src/utils/zod-helpers.js";
-import { elicitDeleteConfirmation } from "../../src/utils/elicitation-helpers.js";
-import { NO_UNTRUSTED_CONTENT } from "../../src/utils/untrusted-content.js";
+} from "../../src/utils/mcp/tool-handler-factory.js";
+import { extractZodShape } from "../../src/utils/mcp/zod-helpers.js";
+import { elicitDeleteConfirmation } from "../../src/utils/mcp/elicitation-helpers.js";
+import { NO_UNTRUSTED_CONTENT } from "../../src/utils/mcp/untrusted-content.js";
 
 const PROTO = "2025-06-18";
 /** Well under the SDK's 60s request timeout, so old code fails fast here. */

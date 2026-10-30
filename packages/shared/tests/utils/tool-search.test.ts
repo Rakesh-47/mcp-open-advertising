@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { createToolSearchTool, searchTools } from "../../src/utils/tool-search.js";
-import type { ToolDefinitionForFactory } from "../../src/utils/tool-handler-factory.js";
+import { createToolSearchTool, searchTools } from "../../src/utils/mcp/tool-search.js";
+import type { ToolDefinitionForFactory } from "../../src/utils/mcp/tool-handler-factory.js";
 
 function makeTool(name: string, description: string, title?: string): ToolDefinitionForFactory {
   return {

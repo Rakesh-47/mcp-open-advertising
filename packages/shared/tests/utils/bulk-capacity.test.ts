@@ -2,8 +2,8 @@
 // See LICENSE.md in the project root for full license terms.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { RateLimiter, createPlatformRateLimiter } from "../../src/utils/rate-limiter.js";
-import { assertBulkCapacity, projectBulkCapacity } from "../../src/utils/bulk-capacity.js";
+import { RateLimiter, createPlatformRateLimiter } from "../../src/utils/http/rate-limiter.js";
+import { assertBulkCapacity, projectBulkCapacity } from "../../src/utils/mcp/bulk-capacity.js";
 import { McpError, JsonRpcErrorCode } from "../../src/utils/mcp-errors.js";
 
 describe("RateLimiter.projectAdmissions", () => {

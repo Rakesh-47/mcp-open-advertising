@@ -106,7 +106,7 @@ server, including the `*_search_tools` discovery tool where present.
 ### What Every Server Ships
 
 Every server speaks MCP protocol revisions `2025-03-26`, `2025-06-18` and
-`2025-11-25`, the ones `@modelcontextprotocol/sdk` 1.27.1 implements; the
+`2025-11-25`, the ones `@modelcontextprotocol/sdk` 1.31.0 implements; the
 Streamable HTTP transport rejects any other `MCP-Protocol-Version`. The current
 revision, `2026-07-28`, is not supported yet
 ([#242](https://github.com/cesteral/mcp-open-advertising/issues/242)).
@@ -343,7 +343,7 @@ curl -X POST http://localhost:3004/mcp \
 
 ### Technology Stack
 
-- **Runtime**: TypeScript 5.0+, Node.js 20 LTS, Hono (HTTP + MCP transport)
+- **Runtime**: TypeScript 5.0+, Node.js 22 LTS, Hono (HTTP + MCP transport)
 - **Validation**: Zod schemas
 - **Infrastructure**: GCP Cloud Run, BigQuery, Pub/Sub, Secret Manager, Terraform
 - **Build**: Turborepo, pnpm workspaces, Docker

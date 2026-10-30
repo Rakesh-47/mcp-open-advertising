@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { z } from "zod";
-import { registerAsyncTaskTool } from "../../src/utils/async-task-tool.js";
+import { registerAsyncTaskTool } from "../../src/utils/mcp/async-task-tool.js";
 
 function createLogger() {
   return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any;

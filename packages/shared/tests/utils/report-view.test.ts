@@ -10,7 +10,7 @@ import {
   REPORT_MAX_RETURNED_ROWS,
   ReportViewInputSchema,
   ReportViewOutputSchema,
-} from "../../src/utils/report-view.js";
+} from "../../src/utils/reporting/report-view.js";
 
 describe("report view utilities", () => {
   it("defaults to summary mode with preview rows", () => {

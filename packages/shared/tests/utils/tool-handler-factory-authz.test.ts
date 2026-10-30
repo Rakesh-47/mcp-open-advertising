@@ -1,21 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { z } from "zod";
 
-vi.mock("../../src/utils/telemetry.js", () => ({
+vi.mock("../../src/utils/observability/telemetry.js", () => ({
   withToolSpan: vi.fn().mockImplementation((_name, _input, fn) => fn({})),
   withSpan: vi.fn().mockImplementation((_name, fn) => fn()),
   setSpanAttribute: vi.fn(),
   recordSpanError: vi.fn(),
 }));
 
-vi.mock("../../src/utils/metrics.js", () => ({
+vi.mock("../../src/utils/observability/metrics.js", () => ({
   recordToolExecution: vi.fn(),
   recordEvaluatorFinding: vi.fn(),
   recordEvaluatorRecommendation: vi.fn(),
   recordWorkflowCallDepth: vi.fn(),
 }));
 
-import { registerToolsFromDefinitions } from "../../src/utils/tool-handler-factory.js";
+import { registerToolsFromDefinitions } from "../../src/utils/mcp/tool-handler-factory.js";
 import type { SessionAuthContext } from "../../src/auth/auth-strategy.js";
 import type { Logger } from "pino";
 

@@ -19,11 +19,11 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { remoteParentFromMeta } from "../../src/utils/trace-context.js";
-import { withSpan } from "../../src/utils/telemetry.js";
-import { registerToolsFromDefinitions } from "../../src/utils/tool-handler-factory.js";
-import { extractZodShape } from "../../src/utils/zod-helpers.js";
-import { NO_UNTRUSTED_CONTENT } from "../../src/utils/untrusted-content.js";
+import { remoteParentFromMeta } from "../../src/utils/observability/trace-context.js";
+import { withSpan } from "../../src/utils/observability/telemetry.js";
+import { registerToolsFromDefinitions } from "../../src/utils/mcp/tool-handler-factory.js";
+import { extractZodShape } from "../../src/utils/mcp/zod-helpers.js";
+import { NO_UNTRUSTED_CONTENT } from "../../src/utils/mcp/untrusted-content.js";
 
 const TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736";
 const SPAN_ID = "00f067aa0ba902b7";

@@ -6,7 +6,7 @@
 // which single tool do you call? Two implementations, for two different jobs.
 //
 //   lexicalRouter   — the CONTROL. Runs the fleet's own shipped scorer
-//                     (packages/shared/src/utils/tool-search.ts) over the merged
+//                     (packages/shared/src/utils/mcp/tool-search.ts) over the merged
 //                     catalog instead of one server's registry. Free, offline,
 //                     deterministic, and it measures something genuinely useful:
 //                     how much of cross-server routing is solvable without a
@@ -25,7 +25,7 @@
 // logic is covered offline. A harness whose model path is never executed until
 // it runs against a paid endpoint is a harness nobody can trust.
 
-import { searchTools } from "../../packages/shared/dist/utils/tool-search.js";
+import { searchTools } from "../../packages/shared/dist/utils/mcp/tool-search.js";
 
 export const DEFAULT_MODEL = "claude-sonnet-5";
 

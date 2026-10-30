@@ -69,7 +69,7 @@ cd terraform
 terraform init -backend-config=backend-dev.conf
 
 # 3. Review and apply
-terraform plan -var-file=dev.tfvars -var="dbm_mcp_image=..." ...
+terraform plan -var-file=dev.tfvars   # mcp_images in the tfvars, or -var-file=<images>.tfvars.json
 terraform apply
 ```
 
@@ -96,33 +96,35 @@ terraform plan -var-file=prod.tfvars ...
 
 ### Adding a new MCP server
 
-1. Add a container image variable in `variables.tf`:
+Services are one `module "mcp_service"` with `for_each` over the servers in `../registry.json`, so registering a server there adds its Cloud Run service, monitoring and load-balancer route. Three per-service maps are still written by hand, and `scripts/lib/fleet-inventory.test.mjs` fails until the server is in each:
 
-   ```hcl
-   variable "new_mcp_image" {
-     description = "Full container image URL for new-mcp server"
-     type        = string
-   }
-   ```
+1. `local.service_auth_defaults` in `main.tf`: the default `MCP_AUTH_MODE`, one of the server's registry `auth.modes`.
+2. The `mcp_secret_env_vars` default in `variables.tf`: env var → Secret Manager secret (`secret_names` are derived from it).
+3. `mcp_images` in `dev.tfvars.example` and `prod.tfvars.example`, and in your real tfvars.
 
-2. Add secret env var config in `variables.tf` (the `secret_names` are derived automatically from the env var map):
+Cloud Build and `scripts/deploy.sh` read the server list from the registry, so they need no change.
 
-   ```hcl
-   variable "new_secret_env_vars" {
-     type = map(object({ secret_name = string, version = string }))
-     default = {
-       MCP_AUTH_SECRET_KEY = { secret_name = "cesteral-jwt-secret-key", version = "latest" }
-     }
-   }
-   ```
+### Migrating tfvars to the for_each layout
 
-3. Add a module block in `main.tf` and derive secret names in the `locals` block.
+The 13 per-server variables became two maps keyed by package name: `<server>_mcp_image` → `mcp_images`, and `<server>_secret_env_vars` → `mcp_secret_env_vars`. Terraform only _warns_ about a tfvars entry for a variable that no longer exists, so the plan steps in Cloud Build and `deploy.sh` now fail on that warning, and `mcp_images` is required. A tfvars file still in the old shape therefore fails loudly rather than falling back to defaults. Convert it before the first plan after this change:
 
-4. Add outputs in `outputs.tf`.
+```hcl
+mcp_images = {
+  "dbm-mcp" = "europe-west2-docker.pkg.dev/<project>/cesteral/dbm-mcp:latest"
+  # ... one entry per server in registry.json
+}
 
-5. Add the container image to all `.tfvars` files.
+# Only if you override the defaults in variables.tf. Setting it replaces the
+# whole map, so include every server.
+mcp_secret_env_vars = {
+  "dbm-mcp" = {
+    MCP_AUTH_SECRET_KEY = { secret_name = "cesteral-jwt-secret-key", version = "latest" }
+  }
+  # ...
+}
+```
 
-6. Update `cloudbuild.yaml` and `scripts/deploy.sh` to build/push/deploy the new server.
+`moved.tf` moves each `module.<server>_mcp` to `module.mcp_service["<server>-mcp"]`. The first plan after the change should show 13 moves and no adds, changes or destroys. Anything else means the tfvars were not converted faithfully.
 
 ### Inspecting current state
 
@@ -131,13 +133,13 @@ terraform plan -var-file=prod.tfvars ...
 terraform state list
 
 # Show a specific resource
-terraform state show module.dbm_mcp.google_cloud_run_v2_service.mcp_server
+terraform state show 'module.mcp_service["dbm-mcp"].google_cloud_run_v2_service.mcp_server'
 
 # View all outputs
 terraform output
 
-# View specific output
-terraform output dbm_mcp_service_url
+# Service URLs, keyed by package
+terraform output service_urls
 ```
 
 ## Secrets Management
@@ -155,7 +157,7 @@ gcloud secrets describe cesteral-jwt-secret-key
 gcloud secrets versions list cesteral-jwt-secret-key
 ```
 
-The secret-to-env-var mapping is defined in `variables.tf` via `*_secret_env_vars` maps. The `secret_names` lists are derived automatically from these maps in `main.tf` locals to avoid dual-maintenance.
+The secret-to-env-var mapping is the `mcp_secret_env_vars` map in `variables.tf`, keyed by package. Each service's `secret_names` list is derived from it in `local.mcp_service_inputs` to avoid dual-maintenance.
 
 ## Per-Service Resource Overrides
 

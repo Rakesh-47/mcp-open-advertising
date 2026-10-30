@@ -34,7 +34,7 @@ import {
   REPORT_SPILL_ENV,
   deleteSpilledObjectsForSession,
   spillBodyToGcs,
-} from "../../src/utils/report-spill.js";
+} from "../../src/utils/reporting/report-spill.js";
 
 const logger = pino({ level: "silent" });
 

@@ -129,7 +129,7 @@ jobs:
           DRIFT_REPORT_FILE: ${{ runner.temp }}/drift-report.md
         run: |
           set +e
-          node scripts/check-terraform-drift.mjs "${{ matrix.environment }}"
+          node scripts/check/check-terraform-drift.mjs "${{ matrix.environment }}"
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0

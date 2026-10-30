@@ -12,7 +12,7 @@
  * "x")`, a caller that names account B while the session is bound to account A
  * has its call — including writes — silently execute against A. That is a
  * wrong-account execution the schema actively lies about (see
- * `packages/shared/src/utils/assert-account-scope.ts`).
+ * `packages/shared/src/utils/mcp/assert-account-scope.ts`).
  *
  * `assertAccountScope` is opt-in per handler, so a new tool can forget it and
  * reintroduce the silent mismatch. This audit is the regression guard: a tool

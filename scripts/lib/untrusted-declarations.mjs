@@ -1,7 +1,7 @@
 // Copyright (c) Cesteral AB. Licensed under the Apache License, Version 2.0.
 //
 // Helpers for the #204 untrusted-content declaration ratchet, shared by
-// untrusted-declarations.test.mjs and scripts/sync-untrusted-declarations.mjs.
+// untrusted-declarations.test.mjs and scripts/generate/sync-untrusted-declarations.mjs.
 // See the test's header for what is checked and why.
 
 import { join } from "node:path";

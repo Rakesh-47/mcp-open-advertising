@@ -23,21 +23,12 @@ case "$ENVIRONMENT" in
     ;;
 esac
 
-SERVERS=(
-  "dbm-mcp"
-  "dv360-mcp"
-  "ttd-mcp"
-  "gads-mcp"
-  "meta-mcp"
-  "linkedin-mcp"
-  "tiktok-mcp"
-  "cm360-mcp"
-  "sa360-mcp"
-  "pinterest-mcp"
-  "snapchat-mcp"
-  "amazon-dsp-mcp"
-  "msads-mcp"
-)
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# The server list comes from registry.json (scripts/fleet.mjs). Captured
+# before splitting so `set -e` stops the script if the lookup fails.
+SERVER_LIST="$(node "$REPO_ROOT/scripts/fleet.mjs" servers)"
+# shellcheck disable=SC2206 # package names contain no spaces or globs
+SERVERS=($SERVER_LIST)
 
 FAILED=0
 PASSED=0

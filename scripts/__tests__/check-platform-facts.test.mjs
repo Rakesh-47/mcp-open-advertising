@@ -19,7 +19,7 @@ import {
   checkCodeRefs,
   assessFreshness,
   REFRESH_DAYS,
-} from "../check-platform-facts.mjs";
+} from "../check/check-platform-facts.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const ledger = JSON.parse(readFileSync(join(ROOT, "platform-facts.json"), "utf-8"));
@@ -35,24 +35,31 @@ describe("the shipped ledger", () => {
     expect(checkCodeRefs(ledger, ROOT)).toEqual([]);
   });
 
-  it("covers every server package that hardcodes an API base URL", () => {
-    const covered = new Set(ledger.facts.map((f) => f.package));
-    for (const pkg of [
-      "gads-mcp",
-      "dv360-mcp",
-      "cm360-mcp",
-      "meta-mcp",
-      "sa360-mcp",
-      "ttd-mcp",
-      "msads-mcp",
-      "linkedin-mcp",
-      "amazon-dsp-mcp",
-      "pinterest-mcp",
-      "snapchat-mcp",
-      "tiktok-mcp",
-    ]) {
-      expect(covered, `${pkg} has no platform-facts entry`).toContain(pkg);
-    }
+  // Derived from registry.json, so a new server is covered the day it is
+  // registered rather than when someone remembers to extend a list here.
+  const servers = JSON.parse(readFileSync(join(ROOT, "registry.json"), "utf-8")).servers;
+  const API_SURFACE_CLASSES = new Set([
+    "versioned-base-url",
+    "unversioned-base-url",
+    "date-versioned-header",
+  ]);
+
+  it.each(servers.map((s) => s.package))("%s pins its API base URL or version", (pkg) => {
+    const classes = ledger.facts.filter((f) => f.package === pkg).map((f) => f.class);
+    expect(
+      classes.some((c) => API_SURFACE_CLASSES.has(c)),
+      `${pkg} has no base-URL or API-version fact in platform-facts.json`
+    ).toBe(true);
+  });
+
+  it.each(servers.map((s) => s.package))("%s pins its default rate limit", (pkg) => {
+    // The `<platform>.rate_limit_default` fact is what stops a default being
+    // raised without touching the ledger (CLAUDE.md, Platform-Facts Ledger).
+    const ids = ledger.facts.filter((f) => f.package === pkg).map((f) => f.id);
+    expect(
+      ids.some((id) => id.endsWith(".rate_limit_default")),
+      `${pkg} has no <platform>.rate_limit_default fact in platform-facts.json`
+    ).toBe(true);
   });
 
   // Facts someone actually re-checked, and when. Adding to this set is the
@@ -400,15 +407,18 @@ describe("where the freshness half runs", () => {
     expect(contractLane).not.toContain("check-platform-facts.mjs");
   });
 
-  it("CLAUDE.md states the ledger's real size", () => {
+  it("the ledger doc states the ledger's real size", () => {
     // It said "19 facts" for a week after #210 added nine.
-    const claude = readFileSync(join(ROOT, "CLAUDE.md"), "utf-8");
-    expect(claude).toContain(`— ${ledger.facts.length} facts:`);
+    const doc = readFileSync(
+      join(ROOT, "docs", "architecture", "platform-facts-ledger.md"),
+      "utf-8"
+    );
+    expect(doc).toContain(`— ${ledger.facts.length} facts:`);
   });
 });
 
 describe("command line", () => {
-  const script = join(ROOT, "scripts", "check-platform-facts.mjs");
+  const script = join(ROOT, "scripts", "check", "check-platform-facts.mjs");
   const run = (...args) => spawnSync(process.execPath, [script, ...args], { encoding: "utf-8" });
 
   it("refuses --due-within without --freshness rather than running the structure check", () => {

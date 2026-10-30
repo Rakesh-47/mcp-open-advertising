@@ -11,10 +11,10 @@ import {
   redactUrl,
   truncateBody,
   MAX_CAPTURED_BODY_BYTES,
-} from "../../src/utils/http-request-recorder.js";
-import { runWithRequestContext } from "../../src/utils/request-context.js";
-import { executeWithRetry } from "../../src/utils/retryable-fetch.js";
-import type { FetchWithTimeoutFn } from "../../src/utils/retryable-fetch.js";
+} from "../../src/utils/observability/http-request-recorder.js";
+import { runWithRequestContext } from "../../src/utils/observability/request-context.js";
+import { executeWithRetry } from "../../src/utils/http/retryable-fetch.js";
+import type { FetchWithTimeoutFn } from "../../src/utils/http/retryable-fetch.js";
 
 const logger = pino({ level: "silent" });
 

@@ -2,7 +2,10 @@
 // See LICENSE.md in the project root for full license terms.
 
 import { describe, it, expect } from "vitest";
-import { assertSafeDownloadUrl, checkDownloadUrl } from "../../src/utils/download-url-guard.js";
+import {
+  assertSafeDownloadUrl,
+  checkDownloadUrl,
+} from "../../src/utils/http/download-url-guard.js";
 import { McpError, JsonRpcErrorCode } from "../../src/utils/mcp-errors.js";
 
 const GOOGLE = { allowedHostSuffixes: ["googleapis.com"] };

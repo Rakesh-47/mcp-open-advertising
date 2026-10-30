@@ -1,5 +1,7 @@
 # Dev Fleet First Deploy to Cloud Run — Design
 
+> **Status (checked 2026-10-12):** Executed 2026-06-11. Outcome: `2026-06-11-dev-fleet-deploy-results.md`.
+
 **Date:** 2026-06-11
 **Branch / worktree:** `deploy/dev-first-rollout` (`.worktrees/deploy-dev-first-rollout`)
 **Goal:** Stand up the 13-server MCP fleet on GCP Cloud Run in the **dev**

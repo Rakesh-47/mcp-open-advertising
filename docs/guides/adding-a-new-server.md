@@ -4,6 +4,23 @@ Step-by-step guide for adding a new ad platform MCP server to this monorepo. Use
 
 > **Prerequisite reading:** Skim `packages/pinterest-mcp/src/` to see the complete pattern in action before starting.
 
+> **How to use the snippets.** They are abridged illustrations, not files to paste: they show the shape of each piece and every `@cesteral/shared` call a server must make, but leave out platform detail. Your config field names, session config and auth headers will differ. Start from the reference files below instead, and treat CI as the authority: most of the rules a new server must meet are enforced by checks, not by this text. Run **`corepack pnpm ci:local`** early and often. It runs `.github/workflows/ci.yml`'s steps in order, and each failure names the file to change. [Step 20](#step-20-verification-checklist) lists the checks and what each one requires.
+
+**Copy from `packages/pinterest-mcp` and rename** (no platform logic, or only platform names):
+
+| File                                                                                                      | Change                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `tsconfig.json`, `vitest.config.ts`                                                                       | nothing                                                                                                                       |
+| `src/mcp-server/tools/utils/resolve-session.ts`                                                           | names                                                                                                                         |
+| `src/mcp-server/tools/index.ts`, `src/mcp-server/resources/types.ts`, `src/mcp-server/resources/index.ts` | names                                                                                                                         |
+| `src/utils/platform.ts`                                                                                   | platform key and config field                                                                                                 |
+| `src/mcp-server/tools/definitions/get-pacing-status.tool.ts`                                              | names and the account-id field                                                                                                |
+| `src/mcp-server/server.ts`                                                                                | names, description, instructions, workflow-id map; keep the conformance block and the `resolveManifestEntry` line as they are |
+| `src/mcp-server/transports/streamable-http-transport.ts`, `src/index.ts`                                  | auth strategy, headers, env-credential fallback                                                                               |
+| `package.json`                                                                                            | names, description, keywords; drop `generate` and `openapi-typescript` unless you generate types                              |
+
+**Write yourself; the snippets only illustrate**: `src/config/index.ts`, the auth adapter and strategy, the HTTP client, the service, entity mapping, `session-services.ts`, the tools other than pacing, the resources' and prompts' content, and the tests. These hold the platform's API surface, and copying Pinterest's would carry Pinterest's API with them.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -57,7 +74,7 @@ Every server follows the same layered pattern. The shared package (`@cesteral/sh
 
 ## Prerequisites
 
-- **Node.js** 20+ and **pnpm** 9+
+- **Node.js** 22+ and **pnpm 10** — the repo pins `packageManager: pnpm@10.34.5`; run `corepack enable` or prefix commands with `corepack pnpm`. An older global pnpm fails on the `engines` check.
 - Familiarity with **TypeScript**, **Zod**, and REST APIs
 - Platform API credentials (developer account, API keys/tokens)
 - Read the platform's API documentation to understand:
@@ -68,7 +85,7 @@ Every server follows the same layered pattern. The shared package (`@cesteral/sh
 
 ## Step 0: Planning
 
-Before writing code, decide three things:
+Before writing code, decide these things, then register the server (step 4) before anything else:
 
 ### 1. Choose a prefix
 
@@ -112,6 +129,38 @@ List the platform's manageable entity types. Most platforms have:
 
 Some platforms add platform-specific types (e.g., `siteList`, `conversionTracker`). Map platform terminology to these standard names where possible (e.g., Snapchat "Ad Squads" → `adGroup`).
 
+### 4. Register the server in `registry.json` first
+
+Do this **before** writing server code. `buildServerInfo()` and `buildServerCardExtras()` (Steps 12–13) read the registry through `packages/shared/src/utils/transport/registry-data.generated.ts`, and throw `Registry lookup failed` for a package that is not there, so the server cannot boot or pass a test until it is registered. That file is regenerated by `@cesteral/shared`'s `prebuild` (`sync-registry-data.mjs`), so run `corepack pnpm run build` after editing the registry.
+
+`registry.json` is also the source of truth for manifests, `server.json`, the runtime tool checks and the server card, and `scripts/lib/fleet-inventory.test.mjs` requires every `packages/*-mcp` directory to have an entry. Copy an existing entry (Pinterest's is a good model) and fill in every field:
+
+```jsonc
+{
+  "package": "{platform}-mcp",
+  "port": 3014, // the port you allocated; must equal your config's default
+  "tool_prefix": "{prefix}", // must match the prefix your tool names share
+  "governed": true, // see Step 9.5 before setting false
+  "title": "{Platform} Ads MCP Server", // must end in "MCP Server"
+  "description": "{Platform} Ads management — CRUD, reporting, ...",
+  "runtime_description": "{Platform} Ads API: campaigns, ad groups, ads, reporting.",
+  "platform": "{Platform} Ads",
+  "platform_display_name": "{Platform}",
+  "documentation_url": "https://developers.{platform}.com/docs",
+  "tools": [], // regenerate with `corepack pnpm sync:registry-tools` once tools exist
+  "resources": [],
+  "prompts": [], // must match prompts/list exactly (check:registry-runtime)
+  "auth": { "modes": ["{platform}-bearer", "jwt", "none"] }, // must include "none"
+  "tags": ["advertising", "{platform}"],
+  "untrustedContent": { "pathReporting": "per-response" }, // see Step 9
+  "operational": { "terminalOperations": [] }, // see Step 9.5; required even when empty
+}
+```
+
+Every other package also needs `"mcpName": "io.github.cesteral/{platform}-mcp"` in its `package.json` (Step 18); `corepack pnpm generate:registry` then writes the committed `packages/{platform}-mcp/server.json`.
+
+The **port** must equal the `port` default in your config (Step 2), and **`tool_prefix`** must be the prefix your tool names share. Both are checked. The release, conformance, deploy and smoke scripts, Cloud Build and the dev-server usage text all read the server list and ports from the registry (`node scripts/fleet.mjs servers` / `port <package>`), so registering here is what adds the server to them.
+
 ## Step 1: Scaffold the Package
 
 Create the directory structure under `packages/{platform}-mcp/`:
@@ -124,8 +173,7 @@ packages/{platform}-mcp/
 │   │   └── index.ts                          # Zod config schema + parseConfig()
 │   ├── auth/
 │   │   ├── {platform}-auth-adapter.ts        # Token adapter(s)
-│   │   ├── {platform}-auth-strategy.ts       # Auth strategy for HTTP mode
-│   │   └── index.ts                          # Barrel export
+│   │   └── {platform}-auth-strategy.ts       # Auth strategy for HTTP mode
 │   ├── services/
 │   │   ├── session-services.ts               # SessionServiceStore setup
 │   │   └── {platform}/
@@ -159,16 +207,8 @@ packages/{platform}-mcp/
 │   │       │   ├── campaign-setup-workflow.prompt.ts
 │   │       │   └── ...
 │   │       └── index.ts                      # promptRegistry Map
-│   ├── types-global/
-│   │   └── mcp.ts                            # Re-exported shared types
 │   └── utils/
-│       ├── security/
-│       │   └── rate-limiter.ts               # Platform rate limiter singleton
-│       ├── telemetry/
-│       │   ├── index.ts                      # Re-exports
-│       │   └── tracing.ts                    # Platform-specific span helpers
-│       └── errors/
-│           └── index.ts                      # Re-exports from shared
+│       └── platform.ts                       # Rate limiter + span helper (Step 16)
 ├── tests/                                    # Test files
 ├── package.json
 ├── tsconfig.json
@@ -403,13 +443,6 @@ export class {Platform}BearerAuthStrategy extends BearerAuthStrategyBase {
 
 `BearerAuthStrategyBase` handles the shared control flow: it tries `resolveRefreshBranch()` first (for production OAuth2 refresh), falls back to `resolveAccessBranch()` (static token). The fingerprint methods enable credential-bound session reuse.
 
-Create `src/auth/index.ts`:
-
-```typescript
-export * from "./{platform}-auth-adapter.js";
-export * from "./{platform}-auth-strategy.js";
-```
-
 > **Reference:** `packages/pinterest-mcp/src/auth/pinterest-auth-strategy.ts`
 
 ## Step 4: HTTP Client
@@ -419,12 +452,11 @@ Create `src/services/{platform}/{platform}-http-client.ts`. This wraps `fetch` w
 ```typescript
 import type { Logger } from "pino";
 import type { {Platform}AuthAdapter } from "../../auth/{platform}-auth-adapter.js";
-import { McpError, JsonRpcErrorCode } from "../../utils/errors/index.js";
-import { fetchWithTimeout, executeWithRetry } from "@cesteral/shared";
+import { McpError, JsonRpcErrorCode, fetchWithTimeout, executeWithRetry } from "@cesteral/shared";
 import type { RequestContext, RetryConfig } from "@cesteral/shared";
-import { with{Platform}ApiSpan } from "../../utils/telemetry/tracing.js";
+import { with{Platform}ApiSpan } from "../../utils/platform.js";
 
-const RETRY_CONFIG: RetryConfig = {
+export const {PLATFORM}_RETRY_CONFIG: RetryConfig = {
   maxRetries: 3,
   initialBackoffMs: 2_000,
   maxBackoffMs: 30_000,
@@ -483,7 +515,7 @@ export class {Platform}HttpClient {
     return with{Platform}ApiSpan(`api.${method}`, url, async (span) => {
       span.setAttribute("http.request.method", method);
       span.setAttribute("http.url", url);
-      return executeWithRetry(RETRY_CONFIG, {
+      return executeWithRetry({PLATFORM}_RETRY_CONFIG, {
         url,
         fetchOptions: options,
         context,
@@ -517,7 +549,7 @@ Create `src/services/{platform}/{platform}-service.ts`. This contains the busine
 
 ```typescript
 import type { Logger } from "pino";
-import type { RateLimiter } from "../../utils/security/rate-limiter.js";
+import type { RateLimiter } from "@cesteral/shared";
 import type { {Platform}HttpClient } from "./{platform}-http-client.js";
 import type { RequestContext } from "@cesteral/shared";
 import { getEntityConfig, interpolatePath, type {Platform}EntityType } from "../../mcp-server/tools/utils/entity-mapping.js";
@@ -559,7 +591,7 @@ Create `src/services/session-services.ts`. This wires up per-session service ins
 ```typescript
 import type { Logger } from "pino";
 import type { {Platform}AuthAdapter } from "../auth/{platform}-auth-adapter.js";
-import type { RateLimiter } from "../utils/security/rate-limiter.js";
+import type { RateLimiter } from "@cesteral/shared";
 import { SessionServiceStore } from "@cesteral/shared";
 export { SessionServiceStore } from "@cesteral/shared";
 import { {Platform}HttpClient } from "./{platform}/{platform}-http-client.js";
@@ -679,7 +711,7 @@ Create `src/mcp-server/tools/utils/resolve-session.ts`. This is a thin wrapper:
 ```typescript
 import { resolveSessionServicesFromStore } from "@cesteral/shared";
 import { sessionServiceStore, type SessionServices } from "../../../services/session-services.js";
-import type { SdkContext } from "../../../types-global/mcp.js";
+import type { SdkContext } from "@cesteral/shared";
 
 export function resolveSessionServices(sdkContext?: SdkContext): SessionServices {
   return resolveSessionServicesFromStore(sessionServiceStore, sdkContext);
@@ -703,7 +735,7 @@ import { z } from "zod";
 import { resolveSessionServices } from "../utils/resolve-session.js";
 import { getEntityTypeEnum, type {Platform}EntityType } from "../utils/entity-mapping.js";
 import type { RequestContext, McpTextContent } from "@cesteral/shared";
-import type { SdkContext } from "../../../types-global/mcp.js";
+import type { SdkContext } from "@cesteral/shared";
 
 // 1. Tool metadata constants
 const TOOL_NAME = "{prefix}_list_entities";
@@ -780,6 +812,11 @@ export const listEntitiesTool = {
   ],
   logic: listEntitiesLogic,
   responseFormatter: listEntitiesResponseFormatter,
+  // Where platform-controlled text appears in the result (see below).
+  untrustedContent: {
+    structuredPaths: ["$.entities"],
+    contentBlocks: [0],
+  },
 };
 ```
 
@@ -796,6 +833,15 @@ export const listEntitiesTool = {
 | `inputExamples`     | `array`          | `{ label, input }` objects — embedded as markdown in description     |
 | `logic`             | `async function` | `(input, context, sdkContext?) => Promise<Output>`                   |
 | `responseFormatter` | `function`       | `(result, input?) => McpTextContent[]`                               |
+| `untrustedContent`  | `object`         | Paths holding platform text, or `NO_UNTRUSTED_CONTENT` (below)       |
+
+**Rules CI enforces on every tool** (each is a check under `scripts/lib/`; see [Step 20](#step-20-verification-checklist)):
+
+- **`inputSchema` is a top-level `z.object`** (`.superRefine` allowed), never a `z.union` / `z.discriminatedUnion`: the SDK publishes a union as an empty input schema.
+- **`annotations.readOnlyHint` is an explicit boolean**, and `false` for any tool whose name says it mutates or that sends PUT/PATCH/DELETE.
+- **`untrustedContent` is declared on every tool.** Platform text (entity names, ad copy, raw responses, report cells, platform error text) is attacker-controllable, so the result says where it sits: `{ structuredPaths: ["$.entities"], contentBlocks: [0] }` for a tool that returns it, or `NO_UNTRUSTED_CONTENT` (from `@cesteral/shared`) for one that returns none. IDs, statuses, counts and the caller's own input do not count. Over-marking is harmless; under-marking is the failure. After declaring, run `corepack pnpm sync:untrusted-declarations` and commit the snapshot it updates. `docs/architecture/untrusted-content-marking.md` has the full rules.
+- **The title or description names the platform** (its `platform`, `platform_display_name` or prefix from `registry.json`). Many operation names (`get_entity`, `get_pacing_status`) exist on every server, and in a merged tool list the platform is the only disambiguator.
+- **Tool files live in `src/mcp-server/tools/definitions/` and declare `const TOOL_NAME = "..."`** (or `name:`), which `sync:registry-tools` parses.
 
 ### Required tools (cross-server contract)
 
@@ -808,8 +854,10 @@ Every management server must provide these tools. See `docs/CROSS_SERVER_CONTRAC
 | **Bulk**       | `{prefix}_bulk_update_status`                                                                 |
 | **Bids**       | `{prefix}_adjust_bids`                                                                        |
 | **Validation** | `{prefix}_validate_entity`                                                                    |
+| **Pacing**     | `{prefix}_get_pacing_status` (every server ships it; copy Pinterest's, the math is shared)    |
+| **Discovery**  | `{prefix}_search_tools`, generated by `createToolSearchTool` (see the barrel below)           |
 
-Additional recommended tools: reporting (5), bulk create/update (2), targeting (2), duplicate, delivery estimate, ad preview, media upload.
+`{prefix}_duplicate_entity` is expected on write servers (10 of the 11 have it). Account listing is common but not universal, and its name follows the platform (`list_ad_accounts`, `list_advertisers`, `list_user_profiles`). Additional recommended tools: reporting (5), bulk create/update (2), targeting (2), delivery estimate, ad preview, media upload.
 
 ### Tool barrel export
 
@@ -823,7 +871,11 @@ export { getEntityTool } from "./get-entity.tool.js";
 import { listEntitiesTool } from "./list-entities.tool.js";
 import { getEntityTool } from "./get-entity.tool.js";
 // ... import each tool
-import { conformanceTools, type ToolDefinitionForFactory } from "@cesteral/shared";
+import {
+  conformanceTools,
+  createToolSearchTool,
+  type ToolDefinitionForFactory,
+} from "@cesteral/shared";
 
 const productionTools: ToolDefinitionForFactory[] = [
   // ── Core CRUD ──
@@ -855,8 +907,12 @@ const productionTools: ToolDefinitionForFactory[] = [
   getAdPreviewTool,
   // ── Validation (required by contract) ──
   validateEntityTool,
+  // ── Pacing (required) ──
+  getPacingStatusTool,
   // ── Media (if platform supports upload) ──
   // uploadImageTool, uploadVideoTool,
+  // ── Discovery ──
+  createToolSearchTool({ platform: "{platform}", getTools: () => allTools }),
 ];
 
 export const allTools: ToolDefinitionForFactory[] = [
@@ -960,6 +1016,14 @@ cesteral: {
 - **`executableArgsExclude`** lists control args that are not part of the executable write identity (e.g. `dry_run`). The decision-token verifier hashes the wire args **minus** this set into `actionHash`; `__`-prefixed internal args are excluded implicitly.
 - **`readPartner.argMap`** maps this write tool's arg names → the read tool's arg names, so the control plane can fetch the before/after snapshot with no out-of-band pairing. The `readPartner.toolName` must resolve to a real tool — give that read tool a `cesteral` block with `kind: "read"` and a matching `contractId`.
 - **`schemaVersion`** is the contract-surface version. Bump it (and the `contractId` suffix) on any breaking change to the tool's governed surface — this is how the governance repo detects drift.
+
+### Destructive tools: declare them terminal
+
+A tool that deletes, or sets a status that cannot be undone, goes in your registry entry's `operational.terminalOperations` with a note (over 20 characters) saying what cannot be reversed; the server card publishes it. If it is in fact reversible, list it in `scripts/lib/reversible-operations-allowlist.json` with the reason instead. `scripts/lib/terminal-operations.test.mjs` keys on the tool name as well as the annotation, so a `*_delete_entity` governed as a `bulk_job` effect still counts.
+
+### A server with no write tools
+
+A reporting-only server has no `cesteral` blocks, needs no wire tests or decision-token path, and sets `"governed": false`. Today `scripts/lib/governed-packages.test.mjs` allows that only for `dbm-mcp`, so propose a read-only server in an issue first. Its first write tool must meet everything in this step before it ships.
 
 ### What you do NOT have to wire by hand
 
@@ -1111,6 +1175,12 @@ import {
   campaignSetupWorkflowPrompt,
   getCampaignSetupWorkflowMessage,
 } from "./definitions/campaign-setup-workflow.prompt.js";
+import {
+  crossPlatformCampaignSetupPrompt,
+  crossPlatformPerformancePrompt,
+  getCrossPlatformCampaignSetupMessage,
+  getCrossPlatformPerformanceMessage,
+} from "@cesteral/shared";
 
 export interface PromptDefinition {
   prompt: Prompt;
@@ -1126,8 +1196,22 @@ export const promptRegistry: Map<string, PromptDefinition> = new Map([
     },
   ],
   // ... additional prompts
+  // Required on every server, from @cesteral/shared. Never keep a local copy.
+  [
+    crossPlatformPerformancePrompt.name,
+    { prompt: crossPlatformPerformancePrompt, generateMessage: getCrossPlatformPerformanceMessage },
+  ],
+  [
+    crossPlatformCampaignSetupPrompt.name,
+    {
+      prompt: crossPlatformCampaignSetupPrompt,
+      generateMessage: getCrossPlatformCampaignSetupMessage,
+    },
+  ],
 ]);
 ```
+
+Prompt and resource text may only name tools and prompts that are registered somewhere in the fleet (`scripts/lib/prompt-tool-references.test.mjs`), and `registry.json`'s `prompts` list must match `prompts/list` exactly.
 
 **Recommended prompts:** campaign setup, bulk operations, reporting, troubleshooting, targeting discovery.
 
@@ -1149,9 +1233,11 @@ import {
   buildServerInfo,
   extractZodShape,
   registerToolsFromDefinitions,
+  createManifestEntryResolver,
   registerPromptsFromDefinitions,
   registerStaticResourcesFromDefinitions,
   InteractionLogger,
+  isConformanceFixturesEnabled,
   type McpServerPromptLike,
   type PromptDefinitionForFactory,
   type PromptArgumentForFactory,
@@ -1203,6 +1289,12 @@ export async function createMcpServer(
     logger,
     sessionId,
     transformSchema: (schema) => extractZodShape(schema),
+    // Required for a governed server: lets the decision-token check compare each
+    // tool against the definitionHash in the release manifest. Without it,
+    // `warn` mode skips that comparison and `enforce` refuses every governed write.
+    resolveManifestEntry: createManifestEntryResolver(
+      new URL("../cesteral-manifest.json", import.meta.url)
+    ),
     createRequestContext: (params) =>
       createOperationContext({ operation: params.operation, additionalContext: params.additionalContext }),
     defaultTextFormat: "compact",
@@ -1218,11 +1310,11 @@ export async function createMcpServer(
   // Register resources
   registerStaticResourcesFromDefinitions({ server, resources: allResources, logger });
 
-  // Register conformance fixtures (for MCP protocol compliance testing)
-  // Copy this block from any existing server — it's identical across all servers.
-  // See packages/pinterest-mcp/src/mcp-server/server.ts lines 112-148 for the full block.
-  if (process.env.MCP_CONFORMANCE_FIXTURES === "true") {
-    // ... conformance resources, resource templates, and prompts from @cesteral/shared
+  // Register conformance fixtures (for MCP protocol compliance testing).
+  // Copy the body of this `if` from packages/pinterest-mcp/src/mcp-server/server.ts
+  // unchanged; it is identical on every server. CI's conformance job needs it.
+  if (isConformanceFixturesEnabled()) {
+    // ... conformance resources, resource template and prompts from @cesteral/shared
   }
 
   // Register prompts
@@ -1251,6 +1343,8 @@ export async function runStdioServer(server: McpServer, logger: Logger): Promise
 - `extractZodShape()` converts Zod schemas to JSON Schema for MCP tool registration
 - `workflowIdByToolName` maps tools to workflow categories for telemetry grouping
 - `InteractionLogger` persists tool execution data for debugging
+- `buildServerInfo()` reads `title` and `websiteUrl` from the registry entry you created in Step 0, item 4
+- If your server has a `download_report` tool, also call `registerReportCsvResource` as Pinterest does
 
 > **Reference:** `packages/pinterest-mcp/src/mcp-server/server.ts`
 
@@ -1263,17 +1357,17 @@ import type { Logger } from "pino";
 import type { AppConfig } from "../../config/index.js";
 import { createMcpServer } from "../server.js";
 import {
-  createMcpHttpTransport,
-  startMcpHttpServer,
   createAuthStrategy,
   type AuthMode,
-  type McpHttpServer,
   type TransportFactoryConfig,
+  buildServerCardExtras,
+  createTransportEntrypoints,
 } from "@cesteral/shared";
 import { {Platform}BearerAuthStrategy } from "../../auth/{platform}-auth-strategy.js";
 import type { {Platform}AuthAdapter } from "../../auth/{platform}-auth-adapter.js";
 import { createSessionServices, sessionServiceStore } from "../../services/session-services.js";
-import { rateLimiter } from "../../utils/security/rate-limiter.js";
+import { rateLimiter } from "../../utils/platform.js";
+import { {PLATFORM}_RETRY_CONFIG } from "../../services/{platform}/{platform}-http-client.js";
 
 function buildPlatformConfig(config: AppConfig, logger: Logger): TransportFactoryConfig {
   return {
@@ -1284,16 +1378,14 @@ function buildPlatformConfig(config: AppConfig, logger: Logger): TransportFactor
             jwtSecret: config.mcpAuthSecretKey,
             logger,
           }),
-    // IMPORTANT: CORS headers must exactly match the header names your auth adapter reads.
-    // For example, if your adapter reads "x-{platform}-advertiser-id", list "X-{Platform}-Advertiser-Id" here.
+    // CORS headers must exactly match the header names your auth adapter reads.
     corsAllowHeaders: [
       "Content-Type",
       "Authorization",
       "Mcp-Session-Id",
       "MCP-Protocol-Version",
+      "X-Cesteral-Decision-Token", // governance decision tokens; every server lists it
       "X-{Platform}-Account-Id",
-      // Add refresh token headers if applicable:
-      // "X-{Platform}-App-Id", "X-{Platform}-App-Secret", "X-{Platform}-Refresh-Token",
     ],
     authErrorHint:
       config.mcpAuthMode === "{platform}-bearer"
@@ -1301,28 +1393,21 @@ function buildPlatformConfig(config: AppConfig, logger: Logger): TransportFactor
         : "Provide a valid Bearer token in the Authorization header.",
     sessionServiceStore,
     rateLimiter,
+    // The server card publishes this server's real retry budget.
+    retryDescriptor: { maxRetries: {PLATFORM}_RETRY_CONFIG.maxRetries },
     async createSessionForAuth(authResult, sessionId, appConfig, log) {
+      const cfg = appConfig as AppConfig;
+      const sessionConfig = { baseUrl: cfg.{platform}ApiBaseUrl, apiVersion: cfg.{platform}ApiVersion };
+
+      // {platform}-bearer mode: the strategy already built and validated the adapter.
       const adapter = authResult.platformAuthAdapter as {Platform}AuthAdapter | undefined;
       if (adapter) {
-        const cfg = appConfig as AppConfig;
-        const services = createSessionServices(
-          adapter,
-          {
-            baseUrl: cfg.{platform}ApiBaseUrl,
-            apiVersion: cfg.{platform}ApiVersion,
-            // Include reporting config if your SessionConfig interface requires it:
-            // reportPollIntervalMs: cfg.{platform}ReportPollIntervalMs,
-            // reportMaxPollAttempts: cfg.{platform}ReportMaxPollAttempts,
-          },
-          log,
-          rateLimiter
-        );
+        const services = createSessionServices(adapter, sessionConfig, log, rateLimiter);
         sessionServiceStore.set(sessionId, services, authResult.credentialFingerprint);
         return { services };
       }
 
-      // Fallback for none/jwt modes: use env var credentials
-      const cfg = appConfig as AppConfig;
+      // none / jwt modes: fall back to env var credentials.
       if (cfg.{platform}AccessToken && cfg.{platform}AccountId) {
         const { {Platform}AccessTokenAdapter } = await import("../../auth/{platform}-auth-adapter.js");
         const envAdapter = new {Platform}AccessTokenAdapter(
@@ -1331,19 +1416,14 @@ function buildPlatformConfig(config: AppConfig, logger: Logger): TransportFactor
           cfg.{platform}ApiBaseUrl
         );
         await envAdapter.validate();
-        const services = createSessionServices(
-          envAdapter,
-          {
-            baseUrl: cfg.{platform}ApiBaseUrl,
-            apiVersion: cfg.{platform}ApiVersion,
-          },
-          log,
-          rateLimiter
-        );
+        const services = createSessionServices(envAdapter, sessionConfig, log, rateLimiter);
         sessionServiceStore.set(sessionId, services, authResult.credentialFingerprint);
         return { services };
       }
 
+      // `none` without credentials is a protocol-only session (CI's conformance
+      // job runs this way); tools fail at call time instead.
+      if (cfg.mcpAuthMode === "none") return { services: null };
       return {
         services: null,
         error: { message: "{Platform} credentials required.", status: 400 as const },
@@ -1353,20 +1433,13 @@ function buildPlatformConfig(config: AppConfig, logger: Logger): TransportFactor
       return createMcpServer(log, sessionId, gcsBucket);
     },
     packageJsonPath: new URL("../../../package.json", import.meta.url).pathname,
-    platformDisplayName: "{Platform}",
+    // Server-card description, platform and auth modes come from registry.json.
+    serverCard: buildServerCardExtras("{platform}-mcp"),
   };
 }
 
-export function createMcpHttpServer(
-  config: AppConfig,
-  logger: Logger
-): { app: ReturnType<typeof createMcpHttpTransport>["app"]; shutdown: () => Promise<void> } {
-  return createMcpHttpTransport(config, logger, buildPlatformConfig(config, logger));
-}
-
-export async function startHttpServer(config: AppConfig, logger: Logger): Promise<McpHttpServer> {
-  return startMcpHttpServer(config, logger, buildPlatformConfig(config, logger));
-}
+export const { createMcpHttpServer, startHttpServer } =
+  createTransportEntrypoints<AppConfig>(buildPlatformConfig);
 ```
 
 **Key points:**
@@ -1375,6 +1448,7 @@ export async function startHttpServer(config: AppConfig, logger: Logger): Promis
 - `createSessionForAuth()` is the callback that creates session services when a new session connects
 - CORS headers must include all platform-specific headers that clients will send
 - The `createAuthStrategy()` helper handles `jwt` and `none` modes generically
+- `buildServerCardExtras()` throws until the server is in `registry.json` (Step 0, item 4) and `@cesteral/shared` has been rebuilt
 
 > **Reference:** `packages/pinterest-mcp/src/mcp-server/transports/streamable-http-transport.ts`
 
@@ -1383,18 +1457,21 @@ export async function startHttpServer(config: AppConfig, logger: Logger): Promis
 Create `src/index.ts`. This is the complete entry point:
 
 ```typescript
+#!/usr/bin/env node
 import { mcpConfig } from "./config/index.js";
 import { createMcpServer, runStdioServer } from "./mcp-server/server.js";
 import { startHttpServer } from "./mcp-server/transports/streamable-http-transport.js";
-import { initializeOpenTelemetry, otelLogMixin } from "./utils/telemetry/index.js";
-import { {Platform}AccessTokenAdapter } from "./auth/{platform}-auth-adapter.js";
 import {
+  initializeOpenTelemetry,
+  otelLogMixin,
   detectTransportMode,
   createServerLogger,
   bootstrapMcpServer,
 } from "@cesteral/shared";
+import { {Platform}AccessTokenAdapter } from "./auth/{platform}-auth-adapter.js";
 import { createSessionServices, sessionServiceStore } from "./services/session-services.js";
-import { rateLimiter } from "./utils/security/rate-limiter.js";
+import { rateLimiter } from "./utils/platform.js";
+import { allTools } from "./mcp-server/tools/definitions/index.js";
 
 const transportMode = detectTransportMode();
 const logger = createServerLogger("{platform}-mcp", transportMode, otelLogMixin());
@@ -1406,15 +1483,17 @@ async function setupStdioCredentials(sessionId: string): Promise<boolean> {
   if (!accessToken || !accountId) {
     logger.warn(
       "No {Platform} credentials in env vars. " +
-      "Set {PLATFORM}_ACCESS_TOKEN and {PLATFORM}_ACCOUNT_ID for stdio mode."
+        "Set {PLATFORM}_ACCESS_TOKEN and {PLATFORM}_ACCOUNT_ID for stdio mode."
     );
     return false;
   }
 
   const authAdapter = new {Platform}AccessTokenAdapter(
-    accessToken, accountId, mcpConfig.{platform}ApiBaseUrl
+    accessToken,
+    accountId,
+    mcpConfig.{platform}ApiBaseUrl
   );
-  await authAdapter.validate();
+  await authAdapter.validate(); // fail fast on invalid credentials
 
   const services = createSessionServices(
     authAdapter,
@@ -1429,6 +1508,9 @@ async function setupStdioCredentials(sessionId: string): Promise<boolean> {
 }
 
 bootstrapMcpServer({
+  // Boot-time governance posture check and process-wide jti store: an unsafe
+  // `enforce` configuration refuses to start instead of failing every session.
+  tools: allTools,
   serviceName: "{platform}-mcp",
   config: mcpConfig,
   logger,
@@ -1439,6 +1521,9 @@ bootstrapMcpServer({
   runStdio: runStdioServer,
   startHttp: startHttpServer,
   onShutdown: () => rateLimiter.destroy(),
+}).catch((err) => {
+  logger.fatal({ err }, "Failed to start {platform}-mcp");
+  process.exit(1);
 });
 ```
 
@@ -1448,77 +1533,26 @@ bootstrapMcpServer({
 
 ## Step 15: Types
 
-Create `src/types-global/mcp.ts`:
-
-```typescript
-export type { ToolDefinition, ResourceDefinition, SdkContext } from "@cesteral/shared";
-```
-
-These re-exports keep imports clean in tool files. `SdkContext` is the MCP SDK context passed to tool handlers (contains session ID, auth info, etc.).
-
-> **Reference:** `packages/pinterest-mcp/src/types-global/mcp.ts`
+There is no local types module. Import `SdkContext`, `RequestContext`, `McpError`, `JsonRpcErrorCode` and the other shared types directly from `@cesteral/shared`.
 
 ## Step 16: Utilities
 
-### Rate Limiter
-
-Create `src/utils/security/rate-limiter.ts`:
+Create `src/utils/platform.ts`. It is the only local utility module:
 
 ```typescript
-export { RateLimiter } from "@cesteral/shared";
-import { createPlatformRateLimiter } from "@cesteral/shared";
-import { mcpConfig } from "../../config/index.js";
+import { createPlatformSpanHelper, createPlatformRateLimiter } from "@cesteral/shared";
+import { mcpConfig } from "../config/index.js";
 
-export const rateLimiter = createPlatformRateLimiter("{platform}", mcpConfig.{platform}RateLimitPerMinute);
+export const with{Platform}ApiSpan = createPlatformSpanHelper("{platform}");
+export const rateLimiter = createPlatformRateLimiter(
+  "{platform}",
+  mcpConfig.{platform}RateLimitPerMinute
+);
 ```
 
-### Telemetry
+Every `rateLimiter.consume()` key must be a literal or template starting with `{platform}:` (`scripts/lib/rate-limit-keys.test.mjs`). The rate-limit default you pick in Step 2 also needs a `{platform}.rate_limit_default` fact in `platform-facts.json` (Step 19).
 
-Create `src/utils/telemetry/tracing.ts`:
-
-```typescript
-export {
-  initializeOpenTelemetry, shutdownOpenTelemetry, getOpenTelemetrySDK,
-  isOpenTelemetryEnabled, otelLogMixin, getTracer, withSpan, withToolSpan,
-  setSpanAttribute, recordSpanError, type Span,
-} from "@cesteral/shared";
-
-import { withSpan } from "@cesteral/shared";
-import type { Span } from "@cesteral/shared";
-
-export async function with{Platform}ApiSpan<T>(
-  operation: string,
-  entityType: string,
-  fn: (span: Span) => Promise<T>
-): Promise<T> {
-  return withSpan(`{platform}.${operation}`, fn, {
-    "{platform}.operation": operation,
-    "{platform}.entityType": entityType,
-  });
-}
-```
-
-Create `src/utils/telemetry/index.ts`:
-
-```typescript
-export * from "./tracing.js";
-```
-
-### Errors
-
-Create `src/utils/errors/index.ts`:
-
-```typescript
-export {
-  McpError,
-  ErrorHandler,
-  type ErrorContext,
-  JsonRpcErrorCode,
-  mapErrorCodeToHttpStatus,
-} from "@cesteral/shared";
-```
-
-> **Reference:** `packages/pinterest-mcp/src/utils/`
+> **Reference:** `packages/pinterest-mcp/src/utils/platform.ts`
 
 ## Step 17: Tests
 
@@ -1563,6 +1597,12 @@ describe("entity-mapping", () => {
 - Use Vitest as the test runner
 - Name test files `*.test.ts` (excluded from build via tsconfig)
 
+### Wire-request tests (required for every write tool)
+
+Every tool with `readOnlyHint: false` needs a wire test: a `tests/**/*wire*.test.ts` file that calls the tool's `*Logic` function with only `globalThis.fetch` stubbed, and asserts the exact upstream method, URL and body. The file must cite the vendor source it checks against in a `// basis:` comment (an API reference page, an OpenAPI document and its version). `scripts/lib/wire-request-coverage.test.mjs` fails for any write tool whose `*Logic` is never called in such a file. A mocked unit test is not enough, because it cannot catch a wrong path or body shape.
+
+> **Reference:** `packages/pinterest-mcp/tests/tools/pinterest-wire-requests.test.ts` and its helper `tests/helpers/wire.ts`
+
 ### Vitest config
 
 Create `vitest.config.ts`:
@@ -1572,8 +1612,13 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    globals: true,
-    environment: "node",
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary", "html"],
+      include: ["src/**/*.ts"],
+      exclude: ["src/**/index.ts", "src/config/**", "dist/**"],
+      thresholds: { lines: 50, branches: 40, functions: 50, statements: 50 },
+    },
   },
 });
 ```
@@ -1587,6 +1632,7 @@ export default defineConfig({
 ```json
 {
   "name": "@cesteral/{platform}-mcp",
+  "mcpName": "io.github.cesteral/{platform}-mcp",
   "version": "1.0.0",
   "description": "{Platform} Ads MCP Server - Campaign management and reporting via {Platform} API",
   "license": "Apache-2.0",
@@ -1595,11 +1641,17 @@ export default defineConfig({
     "url": "https://github.com/cesteral/mcp-open-advertising.git",
     "directory": "packages/{platform}-mcp"
   },
+  "homepage": "https://github.com/cesteral/mcp-open-advertising#readme",
   "keywords": ["mcp", "model-context-protocol", "advertising", "{platform}-ads"],
-  "files": ["dist/", "README.md", "LICENSE"],
+  "files": ["dist/", "README.md", "LICENSE.md"],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "bin": { "{platform}-mcp": "./dist/index.js" },
+  "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist *.tsbuildinfo",
@@ -1612,30 +1664,23 @@ export default defineConfig({
   },
   "dependencies": {
     "@cesteral/shared": "workspace:*",
-    "@hono/mcp": "^0.2.3",
-    "@hono/node-server": "^1.19.9",
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.67.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "^0.208.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
-    "@opentelemetry/resources": "^2.2.0",
-    "@opentelemetry/sdk-metrics": "^2.2.0",
-    "@opentelemetry/sdk-node": "^0.208.0",
-    "@opentelemetry/semantic-conventions": "^1.38.0",
-    "dotenv": "^17.2.3",
-    "hono": "^4.11.9",
-    "pino": "^10.1.0",
-    "zod": "3.25.76"
+    "@modelcontextprotocol/sdk": "catalog:",
+    "pino": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^20.17.6",
+    "@types/node": "^22.20.5",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^1.6.0"
   }
 }
 ```
+
+- **`catalog:`** resolves the SDK, pino and zod from `pnpm-workspace.yaml`, so every server shares one copy. Never pin those versions per package.
+- Hono, OpenTelemetry and dotenv are dependencies of `@cesteral/shared`, not of a server.
+- **`mcpName`** is required: `generate:registry` writes `server.json` from it.
+- **`files`** ships `LICENSE.md` (copy it into the package), which the release tarball check expects.
 
 ### tsconfig.json
 
@@ -1659,103 +1704,93 @@ export default defineConfig({
 
 ## Step 19: Monorepo Integration
 
-After the package code is complete, integrate it into the monorepo:
+`registry.json` (Step 0, item 4) is the source for everything registry-driven. The rest of the integration is either **generated** from it or a **hand-maintained list** that CI checks against it.
 
-### 1. Install dependencies
-
-```bash
-pnpm install
-```
-
-pnpm workspaces will automatically detect the new package.
-
-### 2. Update `scripts/dev-server.sh`
-
-Add the new server name to the usage help string:
+### 1. Install and build
 
 ```bash
-echo "Available servers: ..., {platform}-mcp"
+corepack pnpm install     # pnpm workspaces pick up the new package
+corepack pnpm run build   # also regenerates shared's registry-data from registry.json
 ```
 
-### 3. Update `docs/CROSS_SERVER_CONTRACT.md`
-
-Add a row to the Server Inventory table:
-
-```markdown
-| {platform}-mcp | `{prefix}` | Management | `accountId` |
-```
-
-### 4. Update `CLAUDE.md`
-
-Add the server to the Server Reference table and any relevant sections.
-
-### 5. Register in `registry.json`
-
-`registry.json` is the **source of truth for governance and manifest discovery** — `scripts/generate-manifests.mjs` iterates `registry.servers` (not a filesystem glob), so a package missing from this file ships **no attestation manifest** even if its tools carry `cesteral` blocks. Add a server entry alongside the existing ones:
-
-```jsonc
-{
-  "package": "{platform}-mcp",
-  "title": "{Platform} MCP Server",
-  "description": "...",
-  "platform": "{Platform}",
-  "platform_display_name": "{PLATFORM}",
-  "documentation_url": "https://developers.{platform}.com",
-  "tools": ["{prefix}_list_entities", "{prefix}_get_entity" /* ... all tool names */],
-  "resources": ["{platform}://entity-schemas" /* ... */],
-  "prompts": ["{prefix}_campaign_setup_workflow" /* ... */],
-  "auth": { "modes": ["{platform}-bearer", "jwt", "none"] },
-  "tags": ["advertising", "{platform}"],
-}
-```
-
-### 6. Generate the attestation manifest
-
-After `pnpm run build`, generate the per-package manifest that blesses each governed tool's `definitionHash`:
+### 2. Regenerate the generated files and commit them
 
 ```bash
-pnpm run generate:manifests
+corepack pnpm sync:registry-tools            # registry tools[] from your *.tool.ts files
+corepack pnpm generate:registry              # packages/{platform}-mcp/server.json
+corepack pnpm sync:untrusted-declarations    # untrusted-declarations snapshot
+corepack pnpm generate:manifests             # dist/cesteral-manifest.json (not committed)
 ```
 
-This boots each server, reads its raw `tools/list`, and writes `dist/cesteral-manifest.json` for every package with governed (`cesteral`-annotated) tools. Confirm your new server prints `wrote manifest with N governed tool(s)` — if it prints `no governed tools`, your write tools are missing their `cesteral` block (revisit [Step 9.5](#step-95-governing-your-write-tools)). The tag-triggered `release.yml` regenerates and signs this manifest transitively via npm build provenance; the governance repo verifies that provenance to promote matching tools to `attested` trust.
+`generate:manifests` must print `wrote manifest with N governed tool(s)` for the new server. `no governed tools` means your write tools are missing their `cesteral` block ([Step 9.5](#step-95-governing-your-write-tools)). The tag-triggered `release.yml` regenerates and signs this manifest transitively via npm build provenance; the governance repo verifies that provenance to promote matching tools to `attested` trust.
 
-### 7. Add a Dockerfile (if deploying to Cloud Run)
+### 3. Add the server to every hand-maintained list
 
-Follow the pattern in `terraform/` and existing Dockerfiles. Each server gets its own container.
+The scripts, Cloud Build's steps and the Dockerfile read the server list from `registry.json`, so they need no edit. What remains is static configuration that cannot read the registry, and three per-service maps Terraform keeps by hand (its modules, outputs, monitoring and load balancer iterate the registry). `scripts/lib/fleet-inventory.test.mjs` fails, naming the file and list, until the server appears in each of these.
 
-### 8. Build and verify
+| File                                                               | What to add                                                                                                                                                            |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cloudbuild.yaml`, `cloudbuild-manual.yaml`                        | both `images:` tags (static Cloud Build config; the build steps read the registry)                                                                                     |
+| `terraform/main.tf`                                                | `local.service_auth_defaults` entry (a mode from your registry `auth.modes`); the `for_each` module, monitoring and load balancer pick the server up from the registry |
+| `terraform/variables.tf`                                           | `mcp_secret_env_vars` default entry: env var → Secret Manager secret                                                                                                   |
+| `terraform/{dev,prod}.tfvars.example`                              | `mcp_images` entry                                                                                                                                                     |
+| `.github/ISSUE_TEMPLATE/*.yml`                                     | server dropdowns; your auth mode in `bug_report.yml`'s auth-mode dropdown                                                                                              |
+| `docs/CROSS_SERVER_CONTRACT.md`, `docs/guides/platform-mapping.md` | inventory rows                                                                                                                                                         |
 
-```bash
-pnpm run build       # Must complete without errors
-pnpm run typecheck   # Must complete without errors
-pnpm run test        # All tests pass
-```
+Besides those named lists, the check counts how many lines of each file mention each server. In a file where every server should appear equally often, a server mentioned on fewer lines than the rest is missing from some list, even one the check does not name. That covers `main.tf`, the tfvars examples, Cloud Build's `images:` and the issue forms. It cannot cover `variables.tf` (servers declare different numbers of secrets), `bug_report.yml` or the contract doc; there, only the named lists above are checked.
+
+**Deployment work no check covers.** The checks prove the server is _listed_; they cannot prove it will _run_ in Cloud Run:
+
+- The contents of your `mcp_secret_env_vars` entry: which env vars your config reads and which Secret Manager secret each comes from.
+- Creating those secrets (`scripts/create-secrets.sh`) and their values.
+- Per-environment settings in your own tfvars: resource overrides, auth-mode overrides, invokers.
+- A `terraform plan` against a real project, which is the only thing that shows the new module resolves.
+
+### 4. Docs and facts with their own checks
+
+- **`README.md`** fleet table: a row with the server's tool count (`check:doc-tool-counts`).
+- **`platform-facts.json`**: at least a base-URL or API-version fact and a `{platform}.rate_limit_default` fact for the package, each pinned to the literal in your config (`check:platform-facts`). Ship them as `unverified` with a `verifyBy` deadline unless you have read the vendor's page; see CLAUDE.md's "Platform-Facts Ledger". If you add facts, update the fact count in CLAUDE.md.
+- **`packages/{platform}-mcp/CLAUDE.md`**: write down the platform quirks a later contributor would trip on, and add a row for the package to the "Server-Specific Notes" table in the root `CLAUDE.md`. The root file has no fleet table to update.
+- **Not yet checked**: `docs/guides/ENV-VARIABLES-GUIDE.md`, `.env.example` and `scripts/create-secrets.sh`. Add the server there too.
 
 ## Step 20: Verification Checklist
 
-Run through this checklist before submitting your PR:
+**The gate is `corepack pnpm ci:local`.** It runs `.github/workflows/ci.yml`'s jobs and steps in order and prints a summary; a job it cannot run locally (Terraform or gitleaks not installed) is reported as NOT RUN rather than passed. Run a single job with `--job <name>`, or see the plan with `--list`. Conformance binds ports 3001 upward, so stop local dev servers first.
 
-- [ ] `pnpm run build` succeeds
-- [ ] `pnpm run typecheck` succeeds
-- [ ] `pnpm run test` passes (including your new tests)
-- [ ] All required tools exist (see [Appendix B](#appendix-b-cross-server-contract-summary))
-- [ ] Tool names follow `{prefix}_{action}` pattern
-- [ ] All tool definitions have `name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `inputExamples`, `logic`
-- [ ] Entity mapping covers all platform entity types
-- [ ] Auth adapter validates tokens (calls a real API endpoint)
-- [ ] Session services are properly created and cleaned up
-- [ ] Rate limiter is configured and consumed before API calls
-- [ ] HTTP client uses `executeWithRetry()` for all API calls
-- [ ] `./scripts/dev-server.sh {platform}-mcp` starts the server
-- [ ] `curl http://localhost:{port}/health` returns 200
+What the checks require of a new server, so a failure is not a surprise:
+
+| Requirement                                                                                               | Enforced by                                                     |
+| --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Registry entry exists, with every field from Step 0                                                       | `fleet-inventory`, `server-info`, `terminal-operations`         |
+| Server listed in every hand-maintained list (Step 19.3)                                                   | `fleet-inventory`                                               |
+| Registry `tools` / `prompts` match the source and the live server                                         | `check:registry-tools`, `check:registry-runtime`                |
+| `server.json` generated, `mcpName` set                                                                    | `check:registry`                                                |
+| Every tool declares `untrustedContent`; snapshot regenerated                                              | `untrusted-declarations`                                        |
+| Every write tool carries a `cesteral` block; `contractId` = `` `${slug}.${toolSlug}.v${schemaVersion}` `` | `write-coverage`, `contract-id-invariant`, `generate:manifests` |
+| Each entity write's `readPartner.argMap` covers the read tool's required args                             | `readpartner-argmap`                                            |
+| Every destructive tool is in `operational.terminalOperations` or the reversible allowlist                 | `terminal-operations`                                           |
+| Every write tool has a basis-cited wire test                                                              | `wire-request-coverage`                                         |
+| `inputSchema` is a `z.object`; `readOnlyHint` explicit and consistent with the HTTP verbs used            | `input-schema-wire`, `write-coverage`, `write-behavior`         |
+| Workflow-id map covers every tool except `_search_tools`                                                  | `workflow-id-maps`                                              |
+| `{prefix}_get_pacing_status`, the two shared cross-platform prompts, platform named in tool text          | `cross-server-routing` eval, `cross-platform-prompts`           |
+| Prompts and resources name only registered tools                                                          | `prompt-tool-references`                                        |
+| Account-scoped tools call `assertAccountScope()`                                                          | `check:account-scope`                                           |
+| Rate-limit keys start with `{platform}:`                                                                  | `rate-limit-keys`                                               |
+| `resolveManifestEntry` passed in `server.ts` (governed servers)                                           | `definition-hash-resolver-coverage` (shared)                    |
+| Platform facts for base URL and rate-limit default                                                        | `check-platform-facts`                                          |
+| README fleet row                                                                                          | `check:doc-tool-counts`                                         |
+
+The named checks live in `scripts/lib/*.test.mjs`, `scripts/__tests__/`, `evals/` and `packages/shared/tests/`. Each failure message says what to change.
+
+Things no check covers, to verify by hand:
+
+- [ ] Auth adapter `validate()` calls a real, cheap platform endpoint and memoizes the result
+- [ ] Session services are created and cleaned up (`onDelete` hooks if you spill reports)
+- [ ] HTTP client uses `executeWithRetry()` for every API call, and `rateLimiter.consume()` before it
+- [ ] Entity mapping covers the platform's entity types
+- [ ] `./scripts/dev-server.sh {platform}-mcp` starts the server; `curl http://localhost:{port}/health` returns 200
 - [ ] `curl -X POST http://localhost:{port}/mcp -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"ping","id":1}'` returns a response
-- [ ] Cross-server contract table updated in `docs/CROSS_SERVER_CONTRACT.md`
-- [ ] Every write tool carries a `cesteral` annotation block (`satisfies CesteralWriteToolAnnotations`)
-- [ ] Each `contractId` equals `` `${contractPlatformSlug}.${contractToolSlug}.v${schemaVersion}` ``
-- [ ] Every entity write's `readPartner.toolName` resolves to a real read tool with a matching `cesteral` `kind: "read"` block
-- [ ] Server registered in `registry.json`
-- [ ] `pnpm run generate:manifests` reports `wrote manifest with N governed tool(s)` for the new server
-- [ ] Platform entry added to `docs/guides/platform-mapping.md`
+- [ ] Docs from Step 19.4 that have no check yet
 
 ---
 
@@ -1763,31 +1798,28 @@ Run through this checklist before submitting your PR:
 
 Create files in this order (each step depends only on previous steps):
 
-| #   | File                                                     | Depends on                       |
-| --- | -------------------------------------------------------- | -------------------------------- |
-| 1   | `package.json`, `tsconfig.json`, `vitest.config.ts`      | Nothing                          |
-| 2   | `src/config/index.ts`                                    | Package metadata                 |
-| 3   | `src/utils/errors/index.ts`                              | Nothing (re-exports from shared) |
-| 4   | `src/utils/telemetry/tracing.ts`, `index.ts`             | Nothing (re-exports from shared) |
-| 5   | `src/utils/security/rate-limiter.ts`                     | Config                           |
-| 6   | `src/types-global/mcp.ts`                                | Nothing                          |
-| 7   | `src/auth/{platform}-auth-adapter.ts`                    | Utils                            |
-| 8   | `src/auth/{platform}-auth-strategy.ts`                   | Auth adapter                     |
-| 9   | `src/auth/index.ts`                                      | Auth files                       |
-| 10  | `src/services/{platform}/{platform}-http-client.ts`      | Auth, utils                      |
-| 11  | `src/services/{platform}/{platform}-service.ts`          | HTTP client                      |
-| 12  | `src/mcp-server/tools/utils/entity-mapping.ts`           | Nothing                          |
-| 13  | `src/services/session-services.ts`                       | Services, HTTP client            |
-| 14  | `src/mcp-server/tools/utils/resolve-session.ts`          | Session services                 |
-| 15  | `src/mcp-server/tools/definitions/*.tool.ts`             | Entity mapping, session resolver |
-| 16  | `src/mcp-server/tools/definitions/index.ts`              | Tool definitions                 |
-| 17  | `src/mcp-server/tools/index.ts`                          | Tool barrel                      |
-| 18  | `src/mcp-server/resources/`                              | Entity mapping                   |
-| 19  | `src/mcp-server/prompts/`                                | Nothing                          |
-| 20  | `src/mcp-server/server.ts`                               | Tools, resources, prompts        |
-| 21  | `src/mcp-server/transports/streamable-http-transport.ts` | Server, auth, sessions           |
-| 22  | `src/index.ts`                                           | Everything                       |
-| 23  | `tests/`                                                 | Source code                      |
+| #   | File                                                     | Depends on                                |
+| --- | -------------------------------------------------------- | ----------------------------------------- |
+| 0   | `registry.json` entry, then `corepack pnpm run build`    | Nothing (Step 0, item 4)                  |
+| 1   | `package.json`, `tsconfig.json`, `vitest.config.ts`      | Nothing                                   |
+| 2   | `src/config/index.ts`                                    | Package metadata                          |
+| 3   | `src/utils/platform.ts`                                  | Config                                    |
+| 4   | `src/auth/{platform}-auth-adapter.ts`                    | Utils                                     |
+| 5   | `src/auth/{platform}-auth-strategy.ts`                   | Auth adapter                              |
+| 6   | `src/services/{platform}/{platform}-http-client.ts`      | Auth, utils                               |
+| 7   | `src/services/{platform}/{platform}-service.ts`          | HTTP client                               |
+| 8   | `src/mcp-server/tools/utils/entity-mapping.ts`           | Nothing                                   |
+| 9   | `src/services/session-services.ts`                       | Services, HTTP client                     |
+| 10  | `src/mcp-server/tools/utils/resolve-session.ts`          | Session services                          |
+| 11  | `src/mcp-server/tools/definitions/*.tool.ts`             | Entity mapping, session resolver          |
+| 12  | `src/mcp-server/tools/definitions/index.ts`              | Tool definitions                          |
+| 13  | `src/mcp-server/tools/index.ts`                          | Tool barrel                               |
+| 14  | `src/mcp-server/resources/`                              | Entity mapping                            |
+| 15  | `src/mcp-server/prompts/`                                | Nothing                                   |
+| 16  | `src/mcp-server/server.ts`                               | Tools, resources, prompts, registry entry |
+| 17  | `src/mcp-server/transports/streamable-http-transport.ts` | Server, auth, sessions, registry entry    |
+| 18  | `src/index.ts`                                           | Everything                                |
+| 19  | `tests/` (including wire tests for every write tool)     | Source code                               |
 
 ---
 
@@ -1825,6 +1857,9 @@ Every management server must provide:
 | Bulk       | `bulk_update_status`                                                             | Batch status changes                   |
 | Bids       | `adjust_bids`                                                                    | May be `adjust_line_item_bids` (DV360) |
 | Validation | `validate_entity`                                                                | Client-side or server-side             |
+| Pacing     | `get_pacing_status`                                                              | Every server, including reporting-only |
+| Discovery  | `search_tools`                                                                   | Generated by `createToolSearchTool`    |
+| Duplicate  | `duplicate_entity`                                                               | Expected on write servers (not cm360)  |
 
 **Bulk result format** (all bulk tools must return):
 
@@ -1857,8 +1892,8 @@ What "governed" means in practice, and the minimum a new platform must do to par
 | 1   | Add a `cesteral` block to every write tool (`entity` or `effect`), authored with `satisfies` | each `*.tool.ts` (Step 9.5)  |
 | 2   | Add a `cesteral` `kind: "read"` block to each entity write's `readPartner` read tool         | the `get_entity` / read tool |
 | 3   | Keep `contractId` = `` `${slug}.${toolSlug}.v${schemaVersion}` ``                            | each annotation              |
-| 4   | Register the package in `registry.json`                                                      | `registry.json` (Step 19.5)  |
-| 5   | Verify `pnpm run generate:manifests` writes a manifest for the package                       | build step (Step 19.6)       |
+| 4   | Register the package in `registry.json`                                                      | `registry.json` (Step 0)     |
+| 5   | Verify `pnpm run generate:manifests` writes a manifest for the package                       | build step (Step 19.2)       |
 | 6   | Add the platform to `docs/guides/platform-mapping.md`                                        | platform-mapping doc         |
 
 **Free, handled by `@cesteral/shared` once the annotation is right:** decision-token verification (default `off` off-hosted, `warn` on a hosted deployment), dry-run/snapshot honesty enforcement, `definitionHash` computation, telemetry span attributes via `workflowIdByToolName`.

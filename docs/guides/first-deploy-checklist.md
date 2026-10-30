@@ -52,9 +52,15 @@ In `<env>.tfvars`, set at minimum:
   must already have a **version** (a `secret_key_ref` to an empty secret
   fails revision deploys). Dev-first: leave this commented in prod until the
   prod value is set.
-- The `*_mcp_image` variables in the example are placeholders — `deploy.sh`
-  overrides them per run with the SHA it just built, so their tfvars values
-  are only used when running terraform by hand.
+- The `mcp_images` entries in the example are placeholders. Both deploy
+  paths override the whole map on every run: `deploy.sh` with the SHA tags it
+  just built (`:latest` under `--skip-build`), `cloudbuild.yaml` with the
+  digests it just pushed. Both pass their image file after `-var-file`,
+  because Terraform lets the last value on the command line win. Keep the
+  entries anyway: `mcp_images` has no default, and the daily drift check
+  (`scripts/check/check-terraform-drift.mjs`) and hand runs plan with the tfvars
+  alone. The drift check therefore sees an image update on each service
+  after a deploy; it tolerates updates, so this is not an alert.
 
 ### Invoker access (who may call the services)
 

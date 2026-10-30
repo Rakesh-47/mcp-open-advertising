@@ -1,0 +1,757 @@
+// Copyright (c) Cesteral AB. Licensed under the Apache License, Version 2.0.
+// See LICENSE.md in the project root for full license terms.
+
+/**
+ * Shared MCP HTTP Transport Factory
+ *
+ * Eliminates ~380 lines of duplicated transport boilerplate across the 5 MCP
+ * servers. Each server provides a small configuration object with
+ * platform-specific hooks (auth strategy, CORS headers, session creation).
+ */
+
+import { readFileSync } from "fs";
+
+import { StreamableHTTPTransport } from "@hono/mcp";
+import { type ServerType, serve } from "@hono/node-server";
+import { Hono, type Context } from "hono";
+import { cors } from "hono/cors";
+import { bodyLimit } from "hono/body-limit";
+import type { Logger } from "pino";
+import {
+  UNTRUSTED_CONTENT_DECLARATION,
+  type UntrustedPathReporting,
+} from "../mcp/untrusted-content.js";
+import { buildOperationalEnvelope, type TerminalOperation } from "./operational-envelope.js";
+import { resolveInteractionLogMode } from "../observability/interaction-logger.js";
+import type { RateLimiter } from "../http/rate-limiter.js";
+
+import {
+  createRequestContext,
+  runWithRequestContext,
+  extractRequestId,
+} from "../observability/request-context.js";
+import {
+  registerActiveSessionsGauge,
+  recordAuthValidation,
+  recordSessionRehydration,
+} from "../observability/metrics.js";
+import {
+  isValidSessionId,
+  generateSessionId,
+  validateProtocolVersion,
+  SUPPORTED_PROTOCOL_VERSIONS,
+  buildAllowedOrigins,
+  createDnsRebindingPolicy,
+  parseAllowedHosts,
+  extractHeadersMap,
+  validateSessionReuse,
+  oauthProtectedResourceBody,
+  warnIfProtectedResourceMetadataIncomplete,
+  wwwAuthenticateChallenge,
+  SessionManager,
+} from "./mcp-transport-helpers.js";
+import type { AuthStrategy, AuthResult, SessionAuthContext } from "../../auth/auth-strategy.js";
+import type { SessionServiceStoreLike } from "./mcp-transport-helpers.js";
+import { buildDeploymentIdentity } from "./deployment-identity.js";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+class McpSessionTransport extends StreamableHTTPTransport {
+  public sessionId: string;
+  constructor(sessionId: string) {
+    super();
+    this.sessionId = sessionId;
+  }
+}
+
+type HonoBindings = {
+  incoming: import("http").IncomingMessage;
+  outgoing: import("http").ServerResponse;
+};
+
+export interface McpHttpServer {
+  server: ServerType;
+  shutdown: () => Promise<void>;
+}
+
+/**
+ * Minimal interface that the session service store must satisfy.
+ * Matches SessionServiceStore from session-store.ts.
+ */
+export interface TransportSessionStore extends SessionServiceStoreLike {
+  get(sessionId: string): unknown;
+  set(sessionId: string, services: unknown, fingerprint?: string): void;
+  setAuthContext(sessionId: string, ctx: SessionAuthContext): void;
+  getFingerprint(sessionId: string): string | undefined;
+  validateFingerprint(sessionId: string, fingerprint: string): boolean;
+  isFull(): boolean;
+  /** Present on the real SessionServiceStore; optional so test fakes stay small. */
+  onDelete?(hook: (sessionId: string) => void | Promise<void>): () => void;
+}
+
+/**
+ * Result of the platform-specific session creation callback.
+ */
+export interface SessionCreationResult {
+  /** The session services object to store. */
+  services: unknown;
+  /** HTTP error to return if session creation fails — omit on success. */
+  error?: { message: string; status: 400 | 401 };
+}
+
+/**
+ * Server-card metadata served at `/.well-known/mcp/server-card.json`.
+ * Tracks SEP-2127 (`.well-known/mcp/server-card.json`) — the proposal is still
+ * in flight, so `schema_version` is dated rather than spec-versioned.
+ *
+ * Fields without obvious defaults (description, platform, supportedAuthModes)
+ * must be supplied by each server. The factory fills in name, version,
+ * transports, current auth mode, and protocol versions.
+ */
+export interface ServerCardExtras {
+  /** One-line description of what the server does. */
+  description: string;
+  /** Ad platform / vendor the server fronts (e.g. "The Trade Desk"). */
+  platform: string;
+  /** Auth modes the server build supports (e.g. ["ttd-token", "jwt", "none"]). */
+  supportedAuthModes: string[];
+  /** Optional human title, defaults to "{platformDisplayName} MCP Server". */
+  title?: string;
+  /** Optional vendor, defaults to "Cesteral". */
+  vendor?: string;
+  /** Optional documentation URL. */
+  documentationUrl?: string;
+  /** Capabilities advertised. Defaults: tools=true, prompts=true, resources=true, elicitation=true. */
+  capabilities?: {
+    tools?: boolean;
+    prompts?: boolean;
+    resources?: boolean;
+    elicitation?: boolean;
+  };
+  /**
+   * Operations on this platform that cannot be undone through this server
+   * (#201). Sourced from `registry.json` via `buildServerCardExtras`, because
+   * irreversibility is a per-platform fact that no local code states: DV360's
+   * delete is a hard delete AND its archive is irreversible, while Amazon DSP
+   * has no hard delete at all.
+   *
+   * This is the only hand-authored value in the operational block, so it is the
+   * only one that can drift — `terminal-operations.test.ts` ratchets it against
+   * the `cesteral` annotations rather than trusting it.
+   */
+  terminalOperations?: TerminalOperation[];
+  /**
+   * Whether this server reports, per result, where platform text sits (#204
+   * Tier 2). Sourced from `registry.json` via `buildServerCardExtras` and
+   * ratcheted against the live `tools/list` by
+   * `scripts/lib/untrusted-declarations.test.mjs`, so it cannot claim
+   * `per-response` while a tool is undeclared. Defaults to `unsupported`.
+   */
+  untrustedPathReporting?: UntrustedPathReporting;
+}
+
+/**
+ * Configuration for the shared transport factory.
+ * Each MCP server provides these platform-specific hooks.
+ */
+export interface TransportFactoryConfig {
+  /** The auth strategy instance for this server. */
+  authStrategy: AuthStrategy;
+  /** CORS allow headers specific to this platform. */
+  corsAllowHeaders: string[];
+  /** Auth error hint shown when authentication fails. */
+  authErrorHint: string;
+  /** The session service store for this server. */
+  sessionServiceStore: TransportSessionStore;
+  /**
+   * Rate limiter instance. Available for session creation, and read by the
+   * server card so the published limit is the one actually enforced (#201).
+   */
+  rateLimiter?: RateLimiter;
+  /**
+   * This server's HTTP retry posture, for the server card's operational block.
+   *
+   * Pass the SAME values the platform HTTP client uses — its `RetryConfig.maxRetries`
+   * and its `isRetryable` override if it has one — so the card describes the
+   * client a caller will actually meet. The factory probes these rather than
+   * transcribing them; see `describeRetryPolicy`. Omit only for a server with no
+   * shared-retry HTTP client, which falls back to the documented defaults.
+   */
+  retryDescriptor?: {
+    maxRetries?: number;
+    isRetryable?: (status: number, errorBody: string) => boolean;
+    /** Set false for a server that does not route through `executeWithRetry`. */
+    usesSharedRetryLayer?: boolean;
+  };
+  /**
+   * Create session services from the auth result.
+   * Called when a new session is created. Must call sessionServiceStore.set() internally.
+   * Return { error } to reject the connection, or { services } on success.
+   */
+  createSessionForAuth: (
+    authResult: AuthResult,
+    sessionId: string,
+    config: TransportFactoryAppConfig,
+    logger: Logger
+  ) => Promise<SessionCreationResult>;
+  /**
+   * Create the MCP server instance for a session.
+   */
+  createMcpServer: (
+    logger: Logger,
+    sessionId: string,
+    gcsBucket?: string
+  ) => Promise<McpServerLike>;
+  /** Absolute path to the server's package.json (for version in /health). */
+  packageJsonPath: string;
+  /**
+   * Extra fields merged into the /health payload on every request. Use for
+   * operator-facing signals that alerting can scrape — e.g. the age of an
+   * env-configured refresh token approaching a platform-imposed lifetime.
+   * Must be cheap and must not throw.
+   */
+  healthExtras?: () => Record<string, unknown>;
+  /** Server-card metadata served at `/.well-known/mcp/server-card.json`. */
+  serverCard?: ServerCardExtras;
+}
+
+/** Minimal MCP server interface required by the factory. */
+interface McpServerLike {
+  connect(transport: StreamableHTTPTransport): Promise<void>;
+  close(): Promise<void>;
+}
+
+/** Minimal app config shape used by the factory. */
+export interface TransportFactoryAppConfig {
+  serviceName: string;
+  nodeEnv: string;
+  port: number;
+  host: string;
+  mcpAuthMode: string;
+  mcpAuthSecretKey?: string;
+  mcpAllowedOrigins?: string;
+  /** Comma-separated Host allow-list (MCP_ALLOWED_HOSTS); enforced on /mcp when set. */
+  mcpAllowedHosts?: string;
+  mcpStatefulSessionTimeoutMs: number;
+  gcsBucketName?: string;
+  [key: string]: unknown;
+}
+
+// ---------------------------------------------------------------------------
+// Factory
+// ---------------------------------------------------------------------------
+
+export function createMcpHttpTransport(
+  config: TransportFactoryAppConfig,
+  logger: Logger,
+  platformConfig: TransportFactoryConfig
+): { app: Hono<{ Bindings: HonoBindings }>; shutdown: () => Promise<void> } {
+  const app = new Hono<{ Bindings: HonoBindings }>();
+  const sessionTransports = new Map<string, McpSessionTransport>();
+  const { sessionServiceStore, authStrategy } = platformConfig;
+
+  warnIfProtectedResourceMetadataIncomplete(config.mcpAuthMode, logger);
+
+  // Every 401 from /mcp carries a WWW-Authenticate challenge where the auth
+  // mode has one (RFC 6750 §3; RFC 9728 §5.1 `resource_metadata` in jwt mode),
+  // so MCP clients can discover how to authenticate instead of parsing a
+  // bespoke JSON body (#246).
+  const unauthorized = (c: Context, body: Record<string, unknown>): Response => {
+    const challenge = wwwAuthenticateChallenge(config.mcpAuthMode, c.req.url);
+    if (challenge) c.header("WWW-Authenticate", challenge);
+    return c.json(body, 401);
+  };
+
+  let pkg: { version: string };
+  try {
+    pkg = JSON.parse(readFileSync(platformConfig.packageJsonPath, "utf-8"));
+  } catch {
+    logger.warn(
+      { path: platformConfig.packageJsonPath },
+      "Failed to read package.json for version info, using fallback"
+    );
+    pkg = { version: "unknown" };
+  }
+
+  const sessions = new SessionManager<McpServerLike>(sessionServiceStore, {
+    onBeforeCleanup: async (sessionId: string) => {
+      const transport = sessionTransports.get(sessionId);
+      if (transport) {
+        await transport.close?.().catch((err) => {
+          logger.warn(
+            { err, sessionId },
+            "Transport close failed during session cleanup (continuing)"
+          );
+        });
+        sessionTransports.delete(sessionId);
+      }
+    },
+    logger,
+  });
+
+  registerActiveSessionsGauge(() => sessionServiceStore.size);
+
+  // A store-initiated delete (e.g. registerToolsFromDefinitions' onAuthError
+  // dropping a session after an upstream credential rejection) must also
+  // detach the transport-side state. Without this, `needsRebuild` below stays
+  // false — the id is still in the SessionManager — and the dead session keeps
+  // serving in-band Unauthorized tool errors instead of forcing re-auth.
+  // Idempotent against cleanupSession(), which drives store.delete itself.
+  sessionServiceStore.onDelete?.((sessionId) => {
+    const transport = sessionTransports.get(sessionId);
+    if (transport) {
+      sessionTransports.delete(sessionId);
+      void transport.close?.().catch(() => {});
+    }
+    void sessions.detachSession(sessionId);
+  });
+
+  // CORS
+  const allowedOrigin = buildAllowedOrigins(config.mcpAllowedOrigins, config.nodeEnv, logger);
+  app.use(
+    "*",
+    cors({
+      origin: allowedOrigin,
+      allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+      allowHeaders: platformConfig.corsAllowHeaders,
+      exposeHeaders: ["Mcp-Session-Id", "WWW-Authenticate"],
+      credentials: true,
+    })
+  );
+
+  // DNS rebinding protection (#241). See `createDnsRebindingPolicy` for the
+  // posture: Host is checked against MCP_ALLOWED_HOSTS when set, else against
+  // loopback names when the server binds a loopback address; Origin against
+  // MCP_ALLOWED_ORIGINS when set, else against loopback origins on a loopback
+  // bind. A non-loopback bind (hosted Cloud Run binds 0.0.0.0) with neither
+  // allow-list keeps the previous behaviour: no Host check.
+  const dnsRebinding = createDnsRebindingPolicy({
+    bindHost: config.host,
+    allowedHosts: parseAllowedHosts(config.mcpAllowedHosts),
+    allowedOrigin,
+  });
+  if (dnsRebinding.mode === "off" && config.mcpAuthMode === "none") {
+    logger.warn(
+      { host: config.host },
+      "DNS-rebinding Host check is off: the server binds a non-loopback address with " +
+        "MCP_AUTH_MODE=none and no MCP_ALLOWED_HOSTS. Bind 127.0.0.1 or set MCP_ALLOWED_HOSTS."
+    );
+  } else {
+    logger.info({ mode: dnsRebinding.mode }, "DNS-rebinding Host check configured");
+  }
+  app.use("/mcp", async (c, next) => {
+    const origin = c.req.header("origin");
+    // `app.request()` (tests) builds a Request with no Host header; the URL's
+    // host is what @hono/node-server derives from the real header anyway.
+    const host = c.req.header("host") ?? new URL(c.req.url).host;
+    const rejected = dnsRebinding.check({ host, origin });
+    if (rejected === "origin") {
+      logger.warn(
+        { origin, allowedOrigins: allowedOrigin, mode: dnsRebinding.mode },
+        "Rejected request with invalid Origin header"
+      );
+      return c.json({ error: "Invalid origin. DNS rebinding protection." }, 403);
+    }
+    if (rejected === "host") {
+      logger.warn({ host, mode: dnsRebinding.mode }, "Rejected request with invalid Host header");
+      return c.json({ error: "Invalid host. DNS rebinding protection." }, 403);
+    }
+    return await next();
+  });
+
+  // Health endpoint
+  app.get("/health", (c) => {
+    return c.json({
+      status: "healthy",
+      service: config.serviceName,
+      version: pkg.version,
+      mode: "streamable-http",
+      activeSessions: sessionServiceStore.size,
+      ...(platformConfig.healthExtras?.() ?? {}),
+    });
+  });
+
+  // RFC 9728 Protected Resource Metadata
+  app.get("/.well-known/oauth-protected-resource", (c) => {
+    const { body, status } = oauthProtectedResourceBody(config.mcpAuthMode, c.req.url);
+    return c.json(body, status as 200);
+  });
+
+  // SEP-2127 MCP Server Card (HTTP discovery)
+  app.get("/.well-known/mcp/server-card.json", async (c) => {
+    const extras = platformConfig.serverCard;
+    const caps = extras?.capabilities ?? {};
+    // C2 / #742 (S1): advertise this Cloud Run deployment's Google-signed
+    // identity so the governance layer can bind `attested` execution to the
+    // running artifact. Null off Cloud Run / when unconfigured — best-effort,
+    // never fails the card.
+    const deployment = await buildDeploymentIdentity();
+    const body: Record<string, unknown> = {
+      schema_version: "2026-04-27-draft",
+      name: config.serviceName,
+      title: extras?.title ?? `${config.serviceName} MCP Server`,
+      version: pkg.version,
+      vendor: extras?.vendor ?? "Cesteral",
+      ...(extras?.description ? { description: extras.description } : {}),
+      ...(extras?.platform ? { platform: extras.platform } : {}),
+      ...(extras?.documentationUrl ? { documentation_url: extras.documentationUrl } : {}),
+      mcp_protocol_versions: SUPPORTED_PROTOCOL_VERSIONS,
+      transports: [{ type: "streamable_http", endpoint: "/mcp" }],
+      auth: {
+        current_mode: config.mcpAuthMode,
+        ...(extras?.supportedAuthModes ? { supported_modes: extras.supportedAuthModes } : {}),
+        ...(config.mcpAuthMode === "jwt"
+          ? { oauth_protected_resource: "/.well-known/oauth-protected-resource" }
+          : {}),
+      },
+      capabilities: {
+        tools: caps.tools ?? true,
+        prompts: caps.prompts ?? true,
+        resources: caps.resources ?? true,
+        elicitation: caps.elicitation ?? true,
+      },
+      ...(deployment ? { deployment } : {}),
+      // #204 Tier 1. Declared unconditionally: every server in this fleet
+      // returns platform-authored free text, so a client must not have to
+      // infer the boundary from which tools it happens to call.
+      untrusted_content: {
+        ...UNTRUSTED_CONTENT_DECLARATION,
+        path_reporting: extras?.untrustedPathReporting ?? "unsupported",
+      },
+      // #201. The operational envelope a client needs BEFORE pointing this
+      // server at a live ad account: how hard we hit their quota, what we
+      // re-send after an ambiguous failure, which duplicate-write rails are
+      // and are NOT covered, what is recorded, and what cannot be undone.
+      // Derived from the live limiter and the real retry predicate, not
+      // declared beside them.
+      operational: buildOperationalEnvelope({
+        rateLimiter: platformConfig.rateLimiter,
+        isRetryable: platformConfig.retryDescriptor?.isRetryable,
+        maxRetries: platformConfig.retryDescriptor?.maxRetries,
+        usesSharedRetryLayer: platformConfig.retryDescriptor?.usesSharedRetryLayer,
+        interactionLogMode: resolveInteractionLogMode({ gcsBucket: config.gcsBucketName }),
+        terminalOperations: extras?.terminalOperations ?? [],
+      }),
+    };
+    return c.json(body, 200);
+  });
+
+  // GET /mcp — 405 Method Not Allowed
+  app.get("/mcp", (c) => {
+    return c.body(null, 405);
+  });
+
+  // DELETE /mcp — session termination
+  //
+  // Authentication is unconditional (sweep 2026-07-25, 02-F1). The credential
+  // check used to sit inside `if (storedFingerprint)`, which is `undefined` for
+  // any session THIS instance has not seen — the normal case once scaled out.
+  // So an unauthenticated caller who merely knew a session id (they are exposed
+  // to browsers by design, via `exposeHeaders: ["Mcp-Session-Id"]`) reached
+  // `cleanupSession`, which fired the store's delete hooks and with them a GCS
+  // bulk delete of the victim's spilled report CSVs. `isValidSessionId` was
+  // never applied here either, so any string was accepted.
+  app.delete("/mcp", async (c) => {
+    const sessionId = c.req.header("mcp-session-id");
+    if (!sessionId) {
+      return c.json({ error: "Mcp-Session-Id header required" }, 400);
+    }
+    if (!isValidSessionId(sessionId)) {
+      return c.json({ error: "Invalid session ID format" }, 400);
+    }
+
+    const headers = extractHeadersMap(c.req.raw.headers);
+    let requestFingerprint: string | undefined;
+    try {
+      // `verify` first: a caller must present valid credentials to terminate
+      // anything, whether or not this instance holds the session. It throws on
+      // failure; `NoAuthStrategy` accepts everyone, which is the intended
+      // posture for `none`-mode / stdio deployments.
+      await authStrategy.verify(headers);
+      requestFingerprint = authStrategy.getCredentialFingerprint
+        ? await authStrategy.getCredentialFingerprint(headers)
+        : undefined;
+    } catch {
+      return unauthorized(c, { error: "Authentication required for session termination" });
+    }
+
+    const storedFingerprint = sessionServiceStore.getFingerprint(sessionId);
+    if (storedFingerprint && requestFingerprint && requestFingerprint !== storedFingerprint) {
+      logger.warn(
+        { sessionId, event: "unauthorized_session_termination" },
+        "Session termination rejected - credential mismatch"
+      );
+      return unauthorized(c, { error: "Session credential mismatch" });
+    }
+
+    logger.info({ sessionId }, "Session termination requested");
+    // For a session this instance does not hold, `cleanupSession` is now a
+    // no-op with respect to the destructive delete hooks — the store only fires
+    // them for sessions it actually held (see `SessionServiceStore.delete`).
+    // The response stays 200 either way: DELETE is idempotent, and a 404 would
+    // turn this endpoint into a cross-instance session-existence oracle.
+    await sessions.cleanupSession(sessionId);
+    return c.json({ status: "terminated", sessionId }, 200);
+  });
+
+  // Request body size limit (10 MB)
+  app.post("*", bodyLimit({ maxSize: 10 * 1024 * 1024 }));
+
+  // POST /mcp — JSON-RPC over Streamable HTTP
+  app.post("/mcp", async (c) => {
+    const requestId = extractRequestId(extractHeadersMap(c.req.raw.headers));
+    const reqCtx = createRequestContext(config.serviceName);
+    reqCtx.requestId = requestId;
+    // Governance decision token (if present) — the tool-handler factory reads it
+    // from the request context to verify governed write calls. Header lookup is
+    // case-insensitive via Hono.
+    reqCtx.decisionToken = c.req.header("x-cesteral-decision-token");
+
+    return runWithRequestContext(reqCtx, async () => {
+      // Validate MCP-Protocol-Version header
+      const protocolVersion = c.req.header("mcp-protocol-version") ?? "2025-03-26";
+      if (!validateProtocolVersion(protocolVersion)) {
+        logger.warn(
+          { protocolVersion, supportedVersions: SUPPORTED_PROTOCOL_VERSIONS },
+          "Unsupported MCP protocol version"
+        );
+        return c.json(
+          {
+            error: "Unsupported MCP protocol version",
+            protocolVersion,
+            supportedVersions: SUPPORTED_PROTOCOL_VERSIONS,
+          },
+          400
+        );
+      }
+
+      // Get or create session
+      const providedSessionId = c.req.header("mcp-session-id");
+      if (providedSessionId && !isValidSessionId(providedSessionId)) {
+        return c.json({ error: "Invalid session ID format" }, 400);
+      }
+
+      // Determine whether this request is:
+      // (a) a brand-new session (no Mcp-Session-Id header),
+      // (b) a known session on this instance (hot path),
+      // (c) an unknown session ID on this instance — which after Cloud Run
+      //     scale-out is the common case. We rebuild from the auth headers
+      //     using the client-provided session ID. The fingerprint check
+      //     below prevents hijacking of a rebuilt session.
+      const needsRebuild =
+        !!providedSessionId &&
+        !sessionServiceStore.get(providedSessionId) &&
+        !sessions.sessionCreatedAt.has(providedSessionId);
+
+      if (providedSessionId) {
+        const headers = extractHeadersMap(c.req.raw.headers);
+        const reuseResult = await validateSessionReuse(
+          authStrategy,
+          sessionServiceStore,
+          headers,
+          providedSessionId
+        );
+        if (!reuseResult.valid) {
+          const auditLogger = logger.child({ component: "audit" });
+          // Fingerprints are hashes derived from the caller's credential (for
+          // bearer/TTD, a hash of the secret token). They are not reversible,
+          // but they are credential-derived material — log only a short prefix,
+          // enough to correlate a mismatch across entries without persisting the
+          // full value to the audit sink.
+          const fpPrefix = (fp?: string) => (fp ? `${fp.slice(0, 12)}…` : undefined);
+          auditLogger.warn(
+            {
+              event: "session_fingerprint_mismatch",
+              sessionId: providedSessionId,
+              storedFingerprint: fpPrefix(reuseResult.storedFingerprint),
+              requestFingerprint: fpPrefix(reuseResult.requestFingerprint),
+            },
+            reuseResult.reason ?? "Session credential mismatch"
+          );
+          return unauthorized(c, { error: "Session credential mismatch" });
+        }
+        // Extend idle timeout on every request from an existing session
+        sessions.touchSession(providedSessionId);
+      }
+
+      // Check session capacity for anything that ALLOCATES a session — a brand
+      // new one, or a rebuild of an id this instance does not hold.
+      //
+      // The check used to be `!providedSessionId`, which skipped it in exactly
+      // the case that allocates: the rebuild path (sweep 2026-07-25, 02-F3).
+      // One valid credential plus a stream of fresh random 64-hex ids therefore
+      // allocated sessions without bound, each holding an authenticated client
+      // for the full idle timeout and costing an upstream `validate()` call on
+      // the way in. A request that resolves to an already-held session is not an
+      // allocation and is still admitted at capacity, so an at-capacity instance
+      // keeps serving its existing clients.
+      if ((!providedSessionId || needsRebuild) && sessionServiceStore.isFull()) {
+        logger.warn(
+          { activeSessions: sessionServiceStore.size, rebuild: needsRebuild },
+          "Max session capacity reached"
+        );
+        return c.json({ error: "Server at capacity. Please try again later." }, 503);
+      }
+
+      // For new sessions or rebuilds, authenticate via configured strategy
+      let sessionId = providedSessionId;
+      if (!sessionId || needsRebuild) {
+        const headers = extractHeadersMap(c.req.raw.headers);
+
+        let authResult: AuthResult;
+        try {
+          authResult = await authStrategy.verify(headers);
+          recordAuthValidation(authResult.authInfo.authType, "success");
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : "Authentication failed";
+          recordAuthValidation(config.mcpAuthMode, "failure");
+          logger.warn({ error: message }, "Authentication failed");
+          return unauthorized(c, {
+            error: message,
+            hint: platformConfig.authErrorHint,
+          });
+        }
+
+        if (!sessionId) {
+          sessionId = generateSessionId();
+        }
+
+        // Platform-specific session creation
+        const result = await platformConfig.createSessionForAuth(
+          authResult,
+          sessionId,
+          config,
+          logger
+        );
+
+        if (result.error) {
+          if (result.error.status === 401) {
+            return unauthorized(c, { error: result.error.message });
+          }
+          return c.json({ error: result.error.message }, result.error.status);
+        }
+
+        sessionServiceStore.setAuthContext(sessionId, {
+          authInfo: authResult.authInfo,
+          credentialFingerprint: authResult.credentialFingerprint,
+          allowedAdvertisers: authResult.allowedAdvertisers,
+        });
+
+        const outcome = needsRebuild ? "rehydrated" : "created";
+        if (outcome === "rehydrated") {
+          recordSessionRehydration(authResult.authInfo.authType);
+        }
+        sessions.trackSession(sessionId);
+
+        logger.info(
+          {
+            sessionId,
+            outcome,
+            activeSessions: sessionServiceStore.size,
+            authType: authResult.authInfo.authType,
+            clientId: authResult.authInfo.clientId,
+          },
+          outcome === "rehydrated"
+            ? "MCP session rehydrated on this instance"
+            : "New MCP session created"
+        );
+      }
+
+      // Get or create cached MCP server for this session
+      let mcpServer = sessions.getServer(sessionId);
+      if (!mcpServer) {
+        mcpServer = await platformConfig.createMcpServer(logger, sessionId, config.gcsBucketName);
+        sessions.setServer(sessionId, mcpServer);
+        logger.debug({ sessionId }, "Created new MCP server instance for session");
+      }
+
+      // Use one connected transport per session
+      let transport = sessionTransports.get(sessionId);
+      try {
+        if (!transport) {
+          transport = new McpSessionTransport(sessionId);
+          await mcpServer.connect(transport);
+          sessionTransports.set(sessionId, transport);
+        }
+
+        const response = await transport.handleRequest(c);
+
+        if (response) {
+          response.headers.set("Mcp-Session-Id", sessionId);
+          return response;
+        }
+        return c.body(null, 204);
+      } catch (error) {
+        logger.error({ error, sessionId, requestId }, "Error handling MCP request");
+        await transport?.close?.().catch(() => {});
+        sessionTransports.delete(sessionId);
+        throw error;
+      }
+    }); // end runWithRequestContext
+  });
+
+  // Start session timeout sweep
+  sessions.startSweep(config.mcpStatefulSessionTimeoutMs, logger);
+
+  return { app, shutdown: () => sessions.shutdown() };
+}
+
+// ---------------------------------------------------------------------------
+// Start the server
+// ---------------------------------------------------------------------------
+export async function startMcpHttpServer(
+  config: TransportFactoryAppConfig,
+  logger: Logger,
+  platformConfig: TransportFactoryConfig
+): Promise<McpHttpServer> {
+  if (config.mcpAuthMode === "none") {
+    logger.warn(
+      "MCP_AUTH_MODE=none — server has no authentication. " +
+        "Sessions without platform credentials will accept protocol messages but tool calls will fail at runtime. " +
+        "This mode is intended for local development only."
+    );
+  }
+
+  const { app, shutdown } = createMcpHttpTransport(config, logger, platformConfig);
+
+  const server = serve(
+    {
+      fetch: app.fetch,
+      port: config.port,
+      hostname: config.host,
+    },
+    (info) => {
+      logger.info(
+        { host: info.address, port: info.port },
+        `${platformConfig.serverCard?.title ?? config.serviceName} listening at http://${info.address}:${info.port}/mcp`
+      );
+    }
+  );
+
+  return { server, shutdown };
+}
+
+// ---------------------------------------------------------------------------
+// Per-server entrypoint helpers — factor out the identical wrapper pair that
+// every server's streamable-http-transport.ts used to define inline.
+// ---------------------------------------------------------------------------
+export interface TransportEntrypoints<TConfig extends TransportFactoryAppConfig> {
+  createMcpHttpServer: (
+    config: TConfig,
+    logger: Logger
+  ) => ReturnType<typeof createMcpHttpTransport>;
+  startHttpServer: (config: TConfig, logger: Logger) => Promise<McpHttpServer>;
+}
+
+export function createTransportEntrypoints<TConfig extends TransportFactoryAppConfig>(
+  buildPlatformConfig: (config: TConfig, logger: Logger) => TransportFactoryConfig
+): TransportEntrypoints<TConfig> {
+  return {
+    createMcpHttpServer: (config, logger) =>
+      createMcpHttpTransport(config, logger, buildPlatformConfig(config, logger)),
+    startHttpServer: (config, logger) =>
+      startMcpHttpServer(config, logger, buildPlatformConfig(config, logger)),
+  };
+}

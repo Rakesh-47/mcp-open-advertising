@@ -1,7 +1,7 @@
 # Amazon DSP v1 Commitments — Design
 
 **Date:** 2026-05-28 (revised after code review the same day — see [§Revision history](#revision-history))
-**Status:** Approved (design); implementation plan in `2026-05-28-amazon-dsp-v1-commitments.md`.
+**Status (checked 2026-10-12):** Implemented; the plan is `2026-05-28-amazon-dsp-v1-commitments.md`.
 **Scope:** `amazon-dsp-mcp` + one small additive change in `@cesteral/shared` (commitment canonical kind).
 **Source spec:** `packages/amazon-dsp-mcp/docs/openapi.json` (Amazon Ads API v1, OAS 3.0.1, "Amazon Ads API ALL Merged" v3.0).
 

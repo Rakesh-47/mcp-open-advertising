@@ -14,7 +14,7 @@
 // definitionHashVerified:false — which can never satisfy the Phase-4 promotion
 // bar (steady ok:true / definitionHashVerified:true). The connector resolves the
 // hash from the released `dist/cesteral-manifest.json`, which is built by
-// `scripts/generate-manifests.mjs` mapping `toManifestEntry` over each server's
+// `scripts/generate/generate-manifests.mjs` mapping `toManifestEntry` over each server's
 // tools/list and dropping the nulls. `toManifestEntry` today includes ANY tool
 // carrying a `cesteral` block — no writeClass filter — so effect tools are
 // covered. This guard makes that a permanent invariant: a future change that

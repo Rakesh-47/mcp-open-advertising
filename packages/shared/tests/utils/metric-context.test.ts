@@ -15,9 +15,9 @@ import {
   buildMetricContext,
   MetricContextSchema,
   CONVERSION_DERIVED_METRICS,
-} from "../../src/utils/metric-context.js";
-import { createReportView } from "../../src/utils/report-view.js";
-import { computeMetrics } from "../../src/utils/computed-metrics.js";
+} from "../../src/utils/reporting/metric-context.js";
+import { createReportView } from "../../src/utils/reporting/report-view.js";
+import { computeMetrics } from "../../src/utils/reporting/computed-metrics.js";
 
 describe("buildMetricContext", () => {
   it("emits only source when nothing else is known", () => {

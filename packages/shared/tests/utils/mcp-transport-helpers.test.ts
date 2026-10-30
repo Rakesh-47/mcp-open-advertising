@@ -15,10 +15,10 @@ import {
   validateSessionReuse,
   SessionManager,
   type SessionServiceStoreLike,
-} from "../../src/utils/mcp-transport-helpers.js";
+} from "../../src/utils/transport/mcp-transport-helpers.js";
 import type { Logger } from "pino";
 import type { AuthStrategy } from "../../src/auth/auth-strategy.js";
-import { SessionServiceStore } from "../../src/utils/session-store.js";
+import { SessionServiceStore } from "../../src/utils/transport/session-store.js";
 
 function createMockLogger(): Logger {
   return {
