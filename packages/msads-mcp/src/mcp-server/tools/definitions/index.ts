@@ -28,6 +28,9 @@ import { getTargetingOptionsTool } from "./get-targeting-options.tool.js";
 import { createReportScheduleTool } from "./create-report-schedule.tool.js";
 import { listReportSchedulesTool } from "./list-report-schedules.tool.js";
 import { deleteReportScheduleTool } from "./delete-report-schedule.tool.js";
+import { getNegativeKeywordsTool } from "./get-negative-keywords.tool.js";
+import { getNegativeKeywordListsTool } from "./get-negative-keyword-lists.tool.js";
+import { getConversionGoalsTool } from "./get-conversion-goals.tool.js";
 import { createToolSearchTool, type ToolDefinitionForFactory } from "@cesteral/shared";
 
 export const productionTools: ToolDefinitionForFactory[] = [
@@ -58,5 +61,8 @@ export const productionTools: ToolDefinitionForFactory[] = [
   createReportScheduleTool,
   listReportSchedulesTool,
   deleteReportScheduleTool,
+  getNegativeKeywordsTool,
+  getNegativeKeywordListsTool,
+  getConversionGoalsTool,
   createToolSearchTool({ platform: "msads", getTools: () => productionTools }),
 ];

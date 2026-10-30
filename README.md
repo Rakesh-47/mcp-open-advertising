@@ -97,7 +97,7 @@ Intelligence layers governance and orchestration on top:
 | [pinterest-mcp](packages/pinterest-mcp)   | Pinterest Ads API v5              | 24    | Bearer token                    |
 | [snapchat-mcp](packages/snapchat-mcp)     | Snapchat Ads API v1               | 25    | Bearer token                    |
 | [amazon-dsp-mcp](packages/amazon-dsp-mcp) | Amazon Ads Unified API (DSP)      | 28    | Bearer token                    |
-| [msads-mcp](packages/msads-mcp)           | Microsoft Advertising API v13     | 28    | Access token + developer token  |
+| [msads-mcp](packages/msads-mcp)           | Microsoft Advertising API v13     | 31    | Access token + developer token  |
 | [dbm-mcp](packages/dbm-mcp)               | Bid Manager API v2                | 6     | Google OAuth2                   |
 
 Thirteen servers, 290+ tools. Tool counts are the live registered total per
